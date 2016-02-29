@@ -103,17 +103,23 @@ int main(int argc, char **argv)
         pose.pose.position.y = 2;
         local_pos_pub.publish(pose);*/
 	testCount++;
-	if(testCount < 500)
+    if(testCount < 250)
 	{
-	ROS_INFO("Throttle: 0.1 Count: %d",testCount);
+        ROS_INFO("Throttle: 0.1 (%d)",(testCount*100)/250);
         att_throttle_pub.publish(throttle);
         att_att_pub.publish(pose);
 	}
+    else if( testCount < 500)
+    {
+        ROS_INFO("Throttle: 0.5 (%d)",((testCount-250)*100)/250);
+        throttle.data = 0.2;
+        att_throttle_pub.publish(throttle);
+    }
 	else
 	{
-	ROS_INFO("Throttle: 0.0");
-	throttle.data = 0.0;
-	att_throttle_pub.publish(throttle);
+        ROS_INFO("Throttle: 0.0");
+        throttle.data = 0.0;
+        att_throttle_pub.publish(throttle);
 	};
         ros::spinOnce();
         rate.sleep();
