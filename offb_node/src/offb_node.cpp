@@ -53,20 +53,21 @@ int main(int argc, char **argv)
     geometry_msgs::PoseStamped pose;
     std_msgs::Float64 throttle;
     uint testCount = 0;
-    //pose.pose.position.x = 0;
-    //pose.pose.position.y = 0;
-    //pose.pose.position.z = 10;
+    pose.pose.position.z = 3;
+    pose.pose.position.x = 3;
+    pose.pose.position.y = 0;
+    //pose.pose.orientation.z = 0.0; //YAW
 
-    throttle.data = 0.1; //throttle
-    pose.pose.orientation.x = 0; //pitch
-    pose.pose.orientation.y = 0; //roll
-    pose.pose.orientation.z = 0; //yaw
+    //throttle.data = 0.1; //throttle
+    //pose.pose.orientation.x = 0; //pitch
+    //pose.pose.orientation.y = 0; //roll
+    //pose.pose.orientation.z = 0; //yaw
 
-    //send a few setpoints before starting
+    //send a few setpoints before starting (Otherwise it is not possible to change to OFFBOARD control)
     for(int i = 100; ros::ok() && i > 0; --i){
-        //local_pos_pub.publish(pose);
-        att_throttle_pub.publish(throttle);
-        att_att_pub.publish(pose);
+        local_pos_pub.publish(pose);
+        //att_throttle_pub.publish(throttle);
+        //att_att_pub.publish(pose);
         ros::spinOnce();
         rate.sleep();
     }
@@ -98,11 +99,12 @@ int main(int argc, char **argv)
             }
         }
 
-        /*pose.pose.position.z = 4;
+        pose.pose.position.z = 4;
         pose.pose.position.x = 3;
         pose.pose.position.y = 2;
-        local_pos_pub.publish(pose);*/
-	testCount++;
+        local_pos_pub.publish(pose);
+	
+	/*testCount++;
     if(testCount < 250)
 	{
         ROS_INFO("Throttle: 0.1 (%d)",(testCount*100)/250);
@@ -120,7 +122,8 @@ int main(int argc, char **argv)
         ROS_INFO("Throttle: 0.0");
         throttle.data = 0.0;
         att_throttle_pub.publish(throttle);
-	};
+	};*/
+
         ros::spinOnce();
         rate.sleep();
     }
