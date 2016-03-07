@@ -19,7 +19,6 @@
  * Created on: July 29, 2013
  * Author: Karl Schwabe
  */
-
 /**
  * \file led_detector.cpp
  * \brief File containing the function definitions required for detecting LEDs and visualising their detections and the pose of the tracked object.
@@ -39,10 +38,17 @@ void LEDDetector::findLeds(const cv::Mat &image, cv::Rect ROI, const int &thresh
                            const cv::Mat &camera_matrix_K, const std::vector<double> &camera_distortion_coeffs)
 {
   // Threshold the image
-  cv::Mat bw_image;
+  cv::Mat bw_image, image_HSV, image_inRange;
+  //cv::imshow("test", image);
+  //cv::waitKey();
   //cv::threshold(image, bwImage, threshold_value, 255, cv::THRESH_BINARY);
-  cv::threshold(image(ROI), bw_image, threshold_value, 255, cv::THRESH_TOZERO);
-
+  //cv::threshold(image(ROI), bw_image, threshold_value, 255, cv::THRESH_TOZERO);
+  if(!image.empty())
+    cvtColor(image(ROI),image_HSV,cv::COLOR_RGB2HSV);
+  else
+      return;
+  cv::inRange(image_HSV,cv::Scalar(101,106,127),cv::Scalar(131,255,255),image_inRange);
+  cv::threshold(image_inRange, bw_image, threshold_value, 255, cv::THRESH_TOZERO);
   // Gaussian blur the image
   cv::Mat gaussian_image;
   cv::Size ksize; // Gaussian kernel size. If equal to zero, then the kerenl size is computed from the sigma

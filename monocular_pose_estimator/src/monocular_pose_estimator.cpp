@@ -144,7 +144,7 @@ void MPENode::imageCallback(const sensor_msgs::Image::ConstPtr& image_msg)
   cv_bridge::CvImagePtr cv_ptr;
   try
   {
-    cv_ptr = cv_bridge::toCvCopy(image_msg, sensor_msgs::image_encodings::MONO8);
+    cv_ptr = cv_bridge::toCvCopy(image_msg, sensor_msgs::image_encodings::BGR8);
   }
   catch (cv_bridge::Exception& e)
   {
@@ -193,7 +193,9 @@ void MPENode::imageCallback(const sensor_msgs::Image::ConstPtr& image_msg)
   { // If pose was not updated
     ROS_WARN("Unable to resolve a pose.");
   }
-
+  cv::Mat tmp;
+  cv::cvtColor(image,tmp,cv::COLOR_BGR2GRAY);
+  image = tmp.clone();
   // publish visualization image
   if (image_pub_.getNumSubscribers() > 0)
   {

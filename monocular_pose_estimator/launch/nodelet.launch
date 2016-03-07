@@ -1,7 +1,7 @@
 <launch>
 
 	<!-- Name of the YAML file containing the marker positions -->
-	<arg name="YAML_file_name" default="demo_marker_positions"/>
+	<arg name="YAML_file_name" default="testvid_marker_positions"/>
 
 	<!-- File containing the the marker positions in the trackable's frame of reference -->
 	<arg name="marker_positions_file" default="$(find monocular_pose_estimator)/marker_positions/$(arg YAML_file_name).yaml"/>
@@ -26,10 +26,10 @@
 			<!-- all other parameters are with the nodelet manager due to namespace issues with dynamic reconfigure -->
     </node>
 
-  	<node name="view_visualisation_image" pkg="image_view" type="image_view" args="image:=/monocular_pose_estimator/image_with_detections" />
+  	<!--<node name="view_visualisation_image" pkg="image_view" type="image_view" args="image:=/monocular_pose_estimator/image_with_detections" />-->
   </group>
 
 	<!-- rosbag play -->
-	<node pkg="rosbag" type="play" name="player" output="screen" args="-d 1 -l $(find monocular_pose_estimator)/bags/test_data.bag"/>
+	<!--<node pkg="rosbag" type="play" name="player" output="screen" args="-d 1 -l $(find monocular_pose_estimator)/bags/test_data.bag"/>-->
 
 </launch>
