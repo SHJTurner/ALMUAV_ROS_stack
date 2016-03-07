@@ -40,6 +40,7 @@ qtcreator-*
 /planning/src
 
 *~
+*.bag
 
 # Emacs
 .#*
