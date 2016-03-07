@@ -1,0 +1,20 @@
+image_width: 800
+image_height: 600
+camera_name: logitech_c930e
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [651.339582, 0.000000, 407.263212, 0.000000, 649.975808, 308.484011, 0.000000, 0.000000, 1.000000]
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [0.048972, -0.105293, -0.004014, 0.001170, 0.000000]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1.000000, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [653.102844, 0.000000, 407.826080, 0.000000, 0.000000, 653.076294, 306.220503, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000]
