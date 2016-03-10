@@ -5,7 +5,7 @@ set(CMAKE_CXX_FLAGS "-O3")
 
 find_package(catkin REQUIRED COMPONENTS cmake_modules)
 find_package(Eigen REQUIRED)
-find_package(OpenCV 2 REQUIRED)
+find_package(OpenCV REQUIRED)
 
 catkin_package(
   INCLUDE_DIRS include
