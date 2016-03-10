@@ -12,7 +12,7 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with RPG-MPE.  If not, see <http://www.gnu.org/licenses/>.
-
+//test
 #include <memory>
 #include <pluginlib/class_list_macros.h>
 
