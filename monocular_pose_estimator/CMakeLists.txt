@@ -21,7 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(Eigen REQUIRED)
 
 # Add opencv
-find_package(OpenCV REQUIRED)
+find_package(OpenCV 2 REQUIRED)
 
 # Generate the reconfigure options
 generate_dynamic_reconfigure_options(cfg/MonocularPoseEstimator.cfg)
@@ -30,7 +30,7 @@ generate_dynamic_reconfigure_options(cfg/MonocularPoseEstimator.cfg)
 catkin_package(
   INCLUDE_DIRS include
   CATKIN_DEPENDS roscpp cv_bridge image_transport dynamic_reconfigure sensor_msgs geometry_msgs monocular_pose_estimator_lib nodelet
-  DEPENDS eigen OpenCV
+  DEPENDS eigen OpenCV 2
 )
 
 # tell catkin where to find the headers for this project
