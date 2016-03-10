@@ -53,26 +53,26 @@ int main(int argc, char **argv)
     geometry_msgs::PoseStamped pose;
     std_msgs::Float64 throttle;
     uint testCount = 0;
-    /*pose.pose.position.z = 3;
+    pose.pose.position.z = 3;
     pose.pose.position.x = 3;
-    pose.pose.position.y = 0;*/
-    //pose.pose.orientation.z = 0.0; //YAW
+    pose.pose.position.y = 0;
+    pose.pose.orientation.z = 0.0; //YAW
 
-    throttle.data = 0.1; //throttle
-    pose.pose.orientation.x = 0; //pitch
-    pose.pose.orientation.y = 0; //roll
-    pose.pose.orientation.z = 0; //yaw
-
+    //throttle.data = 0.1; //throttle
+    //pose.pose.orientation.x = 0; //pitch
+    //pose.pose.orientation.y = 0; //roll
+    //pose.pose.orientation.z = 0; //yaw
+    ROS_INFO("Sending 100 setpoints before swithing to OFFBOARD mode");
     //send a few setpoints before starting (Otherwise it is not possible to change to OFFBOARD control)
     for(int i = 100; ros::ok() && i > 0; --i){
         //local_pos_pub.publish(pose);
         att_throttle_pub.publish(throttle);
         att_att_pub.publish(pose);
-ROS_INFO("BUMB");
+	
         ros::spinOnce();
         rate.sleep();
     }
-
+    
     mavros_msgs::SetMode offb_set_mode;
     offb_set_mode.request.custom_mode = "OFFBOARD";
 
@@ -80,7 +80,7 @@ ROS_INFO("BUMB");
     arm_cmd.request.value = true;
 
     ros::Time last_request = ros::Time::now();
-
+    ROS_INFO("Arming at swithing to OFFBOARD mode");
     while(ros::ok()){
         if( current_state.mode != "OFFBOARD" &&
             (ros::Time::now() - last_request > ros::Duration(5.0))){
@@ -100,12 +100,12 @@ ROS_INFO("BUMB");
             }
         }
 
-        //pose.pose.position.z = 4;
-        //pose.pose.position.x = 3;
-        //pose.pose.position.y = 2;
-        //local_pos_pub.publish(pose);
+        pose.pose.position.z = 4;
+        pose.pose.position.x = 3;
+        pose.pose.position.y = 2;
+        local_pos_pub.publish(pose);
 	
-	testCount++;
+	/*testCount++;
     if(testCount < 250)
 	{
         ROS_INFO("Throttle: 0.1 (%d)",(testCount*100)/250);
@@ -123,7 +123,7 @@ ROS_INFO("BUMB");
         ROS_INFO("Throttle: 0.0");
         throttle.data = 0.0;
         att_throttle_pub.publish(throttle);
-	};
+	};*/
 
         ros::spinOnce();
         rate.sleep();
