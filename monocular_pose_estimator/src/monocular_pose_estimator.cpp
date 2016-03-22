@@ -193,19 +193,18 @@ void MPENode::imageCallback(const sensor_msgs::Image::ConstPtr& image_msg)
   { // If pose was not updated
     ROS_WARN("Unable to resolve a pose.");
   }
-  cv::Mat tmp;
-  cv::cvtColor(image,tmp,cv::COLOR_BGR2GRAY);
-  image = tmp.clone();
+  ///cv::Mat tmp;
+  ///cv::cvtColor(image,tmp,cv::COLOR_BGR2GRAY);
+  /// image = tmp.clone();
   // publish visualization image
   if (image_pub_.getNumSubscribers() > 0)
   {
     cv::Mat visualized_image = image.clone();
-    cv::cvtColor(visualized_image, visualized_image, CV_GRAY2RGB);
+    //cv::cvtColor(visualized_image, visualized_image, CV_GRAY2RGB);
     if (found_body_pose)
     {
       trackable_object_.augmentImage(visualized_image);
     }
-
     // Publish image for visualization
     cv_bridge::CvImage visualized_image_msg;
     visualized_image_msg.header = image_msg->header;

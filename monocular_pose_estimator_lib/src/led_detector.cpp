@@ -24,7 +24,7 @@
  * \brief File containing the function definitions required for detecting LEDs and visualising their detections and the pose of the tracked object.
  *
  */
-
+#include <stdio.h>
 #include "monocular_pose_estimator_lib/led_detector.h"
 
 namespace monocular_pose_estimator
@@ -38,17 +38,17 @@ void LEDDetector::findLeds(const cv::Mat &image, cv::Rect ROI, const int &thresh
                            const cv::Mat &camera_matrix_K, const std::vector<double> &camera_distortion_coeffs)
 {
   // Threshold the image
-  cv::Mat bw_image, image_HSV, image_inRange;
+  cv::Mat bw_image, image_HSV, image_inRange,test_image;
+  test_image = image.clone();
   //cv::imshow("test", image);
   //cv::waitKey();
   //cv::threshold(image, bwImage, threshold_value, 255, cv::THRESH_BINARY);
   //cv::threshold(image(ROI), bw_image, threshold_value, 255, cv::THRESH_TOZERO);
-  if(!image.empty())
-    cvtColor(image(ROI),image_HSV,cv::COLOR_RGB2HSV);
-  else
-      return;
-  cv::inRange(image_HSV,cv::Scalar(101,106,127),cv::Scalar(131,255,255),image_inRange);
+  cv::cvtColor(image(ROI),image_HSV,cv::COLOR_RGB2HSV);
+  //cv::inRange(image_HSV,cv::Scalar(101,106,127),cv::Scalar(131,255,255),image_inRange); //BreadBoard
+  cv::inRange(image_HSV,cv::Scalar(68,0,222),cv::Scalar(180,31,255),image_inRange); //indoor dark test
   cv::threshold(image_inRange, bw_image, threshold_value, 255, cv::THRESH_TOZERO);
+
   // Gaussian blur the image
   cv::Mat gaussian_image;
   cv::Size ksize; // Gaussian kernel size. If equal to zero, then the kerenl size is computed from the sigma
@@ -90,10 +90,14 @@ void LEDDetector::findLeds(const cv::Mat &image, cv::Rect ROI, const int &thresh
       numPoints++;
     }
   }
-
+  for(cv::Point2f p : distorted_points){
+      cv::circle(test_image, p, 10, CV_RGB(0, 255, 255), 2);
+  }
+  cv::imshow("test",test_image);
+  cv::waitKey(1);
   // These will be used for the visualization
   distorted_detection_centers = distorted_points;
-
+  std::cout << "number of points" << numPoints << std::endl;
   if (numPoints > 0)
   {
     // Vector that will contain the undistorted points

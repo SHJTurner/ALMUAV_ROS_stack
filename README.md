@@ -25,3 +25,8 @@ Please note that this is released under a GPL licence. Please contact the author
 M. Faessler, E. Mueggler, K. Schwabe, D. Scaramuzza: 
 **A Monocular Pose Estimation System based on Infrared LEDs.**
 IEEE International Conference on Robotics and Automation (ICRA), Hong Kong, 2014.
+
+# matlab
+Folder with matlab scripts for analysing data
+## EstimatedPosePlotter.m
+Subscribes to the monocular_pose_estimator's estimated pose and plots the data
