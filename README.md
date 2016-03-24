@@ -27,6 +27,7 @@ M. Faessler, E. Mueggler, K. Schwabe, D. Scaramuzza:
 IEEE International Conference on Robotics and Automation (ICRA), Hong Kong, 2014.
 
 # matlab
-Folder with matlab scripts for analysing data
+Folder with matlab scripts for analysing data directly from ROS topics.
+Uses matlabs robotic system toolbox (tested on R2016a)
 ## EstimatedPosePlotter.m
 Subscribes to the monocular_pose_estimator's estimated pose and plots the data
