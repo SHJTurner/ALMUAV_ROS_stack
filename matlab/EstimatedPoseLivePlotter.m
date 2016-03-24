@@ -1,14 +1,17 @@
-%"rosinit" %Init ROS-core (Do it from matlab conole)
+%EstimatedPoseLivePlotter.m
+%Author: Stig Turner
+%Mail: sttur14@student.sdu.dk
+
+%call "rosinit" to start roscore and call "rosshutdown" to shutdown the
+%roscore
 clc; clear all;
-estimatedPose = rossubscriber('/monocular_pose_estimator/estimated_pose'); %create subscriber for the estimated pose
-number_of_samples = 10
+%create subscriber for the estimated pose
+estimatedPose = rossubscriber('/monocular_pose_estimator/estimated_pose'); 
+number_of_samples = 100
 
 %Recive data
-%XDataSet = zeros(1,number_of_samples);
-%YDataSet = zeros(1,number_of_samples);
-%ZDataSet = zeros(1,number_of_samples);
 for n = 1:number_of_samples
-poseData = receive(estimatedPose,10);
+poseData = receive(estimatedPose,5);
 XDataSet(n) = poseData.Pose.Pose.Position.X;
 YDataSet(n) = poseData.Pose.Pose.Position.Y;
 ZDataSet(n) = poseData.Pose.Pose.Position.Z;

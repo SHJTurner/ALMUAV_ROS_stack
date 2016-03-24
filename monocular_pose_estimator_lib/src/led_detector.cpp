@@ -90,11 +90,12 @@ void LEDDetector::findLeds(const cv::Mat &image, cv::Rect ROI, const int &thresh
       numPoints++;
     }
   }
-  for(cv::Point2f p : distorted_points){
+  ///Imshow for testing (added by S Turner)
+  /*for(cv::Point2f p : distorted_points){
       cv::circle(test_image, p, 10, CV_RGB(0, 255, 255), 2);
   }
   cv::imshow("test",test_image);
-  cv::waitKey(1);
+  cv::waitKey(1);*/
   // These will be used for the visualization
   distorted_detection_centers = distorted_points;
   std::cout << "number of points" << numPoints << std::endl;
