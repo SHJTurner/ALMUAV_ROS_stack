@@ -30,4 +30,5 @@ IEEE International Conference on Robotics and Automation (ICRA), Hong Kong, 2014
 Folder with matlab scripts for analysing data directly from ROS topics.
 Uses matlabs robotic system toolbox (tested on R2016a)
 ## EstimatedPosePlotter.m
-Subscribes to the monocular_pose_estimator's estimated pose and plots the data
+Creates multiple plots of the estimated pose's from ros bag files.
+Can be changed to, Subscribe to the monocular_pose_estimator's estimated pose and plots the data, by commenting and uncommenting.
