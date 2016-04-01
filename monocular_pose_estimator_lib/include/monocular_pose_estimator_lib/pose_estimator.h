@@ -337,8 +337,8 @@ public:
    *
    */
   PoseEstimator();
-
-  void augmentImage(cv::Mat &image);
+  ///Modifyed by S. Turner
+  void augmentImage(cv::Mat &image, bool posefound);
 
   /**
    * Sets the positions of the markers on the object.

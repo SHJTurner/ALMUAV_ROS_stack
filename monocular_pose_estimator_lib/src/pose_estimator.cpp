@@ -41,11 +41,16 @@ PoseEstimator::PoseEstimator()
   it_since_initialized_ = 0;
 }
 
-void PoseEstimator::augmentImage(cv::Mat &image)
+///Modifyed by S. Turner
+void PoseEstimator::augmentImage(cv::Mat &image,bool posefound)
 {
+  if(posefound)
   Visualization::createVisualizationImage(image, predicted_pose_, camera_matrix_K_, camera_distortion_coeffs_,
                                           region_of_interest_, distorted_detection_centers_);
+  else
+  Visualization::createVisualizationImageLEDsOnly(image,region_of_interest_,distorted_detection_centers_);
 }
+///----------------------
 
 void PoseEstimator::setMarkerPositions(List4DPoints positions_of_markers_on_object)
 {

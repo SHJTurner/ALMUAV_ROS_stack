@@ -62,26 +62,31 @@ void LEDDetector::findLeds(const cv::Mat &image, cv::Rect ROI, const int &thresh
                            List2DPoints &pixel_positions, std::vector<cv::Point2f> &distorted_detection_centers,
                            const cv::Mat &camera_matrix_K, const std::vector<double> &camera_distortion_coeffs)
 {
+
   // Threshold the image
   cv::Mat bw_image, image_HSV, image_inRange,test_image;
   test_image = image.clone();
+  /// Modifyed by S. Turner
+  /// Changed to detect RED blobs insted of bright blobs (System uses red LEDs insted of infrared)
   //cv::threshold(image, bwImage, threshold_value, 255, cv::THRESH_BINARY);
   //cv::threshold(image(ROI), bw_image, threshold_value, 255, cv::THRESH_TOZERO);
 
   //cv::cvtColor(image(ROI),image_HSV,cv::COLOR_RGB2HSV);
-  cv::cvtColor(image,image_HSV,cv::COLOR_RGB2HSV);
-  //cv::inRange(image_HSV,cv::Scalar(101,106,127),cv::Scalar(131,255,255),image_inRange); //BreadBoard
-  //cv::inRange(image_HSV,cv::Scalar(87,50,80),cv::Scalar(133,255,255),image_inRange);
+  cv::cvtColor(image(ROI),image_HSV,cv::COLOR_RGB2HSV);
+
   cv::inRange(image_HSV,cv::Scalar(105,156,136),cv::Scalar(138,255,255),image_inRange); //indoor dark test
   cv::threshold(image_inRange, bw_image, threshold_value, 255, cv::THRESH_TOZERO);
-
+  ///---------------------------
   // Gaussian blur the image
   cv::Mat gaussian_image;
   cv::Size ksize; // Gaussian kernel size. If equal to zero, then the kerenl size is computed from the sigma
   ksize.width = 0;
   ksize.height = 0;
-  GaussianBlur(bw_image.clone(), gaussian_image, ksize, gaussian_sigma, gaussian_sigma, cv::BORDER_DEFAULT);
-  dilateErodeMat(gaussian_image);
+  //GaussianBlur(bw_image.clone(), gaussian_image, ksize, gaussian_sigma, gaussian_sigma, cv::BORDER_DEFAULT);
+  dilateErodeMat(bw_image);
+  //cv::imshow("Display filterd",bw_image);
+  //cv::waitKey(1);
+  gaussian_image = bw_image.clone();
 
 
   // Find all contours
@@ -103,7 +108,7 @@ void LEDDetector::findLeds(const cv::Mat &image, cv::Rect ROI, const int &thresh
     cv::Moments mu;
     mu = cv::moments(contours[i], false);
     cv::Point2f mc;
-    mc = cv::Point2f(mu.m10 / mu.m00, mu.m01 / mu.m00);// + cv::Point2f(ROI.x, ROI.y);
+    mc = cv::Point2f(mu.m10 / mu.m00, mu.m01 / mu.m00) + cv::Point2f(ROI.x, ROI.y);
 
     // Look for round shaped blobs of the correct size
     if (area >= min_blob_area && area <= max_blob_area
@@ -116,19 +121,9 @@ void LEDDetector::findLeds(const cv::Mat &image, cv::Rect ROI, const int &thresh
       numPoints++;
     }
   }
-  //Imshow for testing (added by S Turner)
-  for(cv::Point2f p : distorted_points){
-      cv::circle(test_image, p, 10, CV_RGB(0, 255, 0), 2);
-  }
-  cv::namedWindow("Display LED detections",cv::WINDOW_NORMAL);
-  cv::namedWindow("Gauss",cv::WINDOW_NORMAL);
-  cv::imshow("Display LED detections",test_image);
-  cv::imshow("Gauss",gaussian_image);
-  cv::waitKey(1);
 
   // These will be used for the visualization
   distorted_detection_centers = distorted_points;
-  std::cout << "number of points" << numPoints << std::endl;
   if (numPoints > 0)
   {
     // Vector that will contain the undistorted points
