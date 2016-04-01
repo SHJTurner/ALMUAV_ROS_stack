@@ -27,8 +27,33 @@
 #include <stdio.h>
 #include "monocular_pose_estimator_lib/led_detector.h"
 
+#define ERODE_ITERATIONS        3
+#define ERODE_PREP_ITERATIONS   5
+#define DILATE_ITERATIONS       4
+#define EROSION_SIZE            2
+
 namespace monocular_pose_estimator
 {
+
+
+#if CV_MAJOR_VERSION > 2
+void LEDDetector::dilateErodeMat(UMat &_src) {
+    Mat _element = getStructuringElement(MORPH_ELLIPSE,
+            Size(2*EROSION_SIZE + 1, 2*EROSION_SIZE+1),
+            Point(EROSION_SIZE, EROSION_SIZE));
+    dilate(_src, _src, _element, Point(-1, -1), DILATE_ITERATIONS);
+    erode(_src, _src, _element, Point(-1, -1), ERODE_ITERATIONS);
+}
+#else
+void LEDDetector::dilateErodeMat(cv::Mat &_src) {
+    cv::Mat _element = cv::getStructuringElement(cv::MORPH_ELLIPSE,
+            cv::Size(2*EROSION_SIZE + 1, 2*EROSION_SIZE+1),
+            cv::Point(EROSION_SIZE, EROSION_SIZE));
+    cv::dilate(_src, _src, _element, cv::Point(-1, -1), DILATE_ITERATIONS);
+    cv::erode(_src, _src, _element, cv::Point(-1, -1), ERODE_ITERATIONS);
+}
+#endif
+
 
 // LED detector
 void LEDDetector::findLeds(const cv::Mat &image, cv::Rect ROI, const int &threshold_value, const double &gaussian_sigma,
@@ -40,13 +65,14 @@ void LEDDetector::findLeds(const cv::Mat &image, cv::Rect ROI, const int &thresh
   // Threshold the image
   cv::Mat bw_image, image_HSV, image_inRange,test_image;
   test_image = image.clone();
-  //cv::imshow("test", image);
-  //cv::waitKey();
   //cv::threshold(image, bwImage, threshold_value, 255, cv::THRESH_BINARY);
   //cv::threshold(image(ROI), bw_image, threshold_value, 255, cv::THRESH_TOZERO);
-  cv::cvtColor(image(ROI),image_HSV,cv::COLOR_RGB2HSV);
+
+  //cv::cvtColor(image(ROI),image_HSV,cv::COLOR_RGB2HSV);
+  cv::cvtColor(image,image_HSV,cv::COLOR_RGB2HSV);
   //cv::inRange(image_HSV,cv::Scalar(101,106,127),cv::Scalar(131,255,255),image_inRange); //BreadBoard
-  cv::inRange(image_HSV,cv::Scalar(68,0,222),cv::Scalar(180,31,255),image_inRange); //indoor dark test
+  //cv::inRange(image_HSV,cv::Scalar(87,50,80),cv::Scalar(133,255,255),image_inRange);
+  cv::inRange(image_HSV,cv::Scalar(105,156,136),cv::Scalar(138,255,255),image_inRange); //indoor dark test
   cv::threshold(image_inRange, bw_image, threshold_value, 255, cv::THRESH_TOZERO);
 
   // Gaussian blur the image
@@ -55,8 +81,8 @@ void LEDDetector::findLeds(const cv::Mat &image, cv::Rect ROI, const int &thresh
   ksize.width = 0;
   ksize.height = 0;
   GaussianBlur(bw_image.clone(), gaussian_image, ksize, gaussian_sigma, gaussian_sigma, cv::BORDER_DEFAULT);
+  dilateErodeMat(gaussian_image);
 
-  //cv::imshow( "Gaussian", gaussian_image );
 
   // Find all contours
   std::vector<std::vector<cv::Point> > contours;
@@ -77,7 +103,7 @@ void LEDDetector::findLeds(const cv::Mat &image, cv::Rect ROI, const int &thresh
     cv::Moments mu;
     mu = cv::moments(contours[i], false);
     cv::Point2f mc;
-    mc = cv::Point2f(mu.m10 / mu.m00, mu.m01 / mu.m00) + cv::Point2f(ROI.x, ROI.y);
+    mc = cv::Point2f(mu.m10 / mu.m00, mu.m01 / mu.m00);// + cv::Point2f(ROI.x, ROI.y);
 
     // Look for round shaped blobs of the correct size
     if (area >= min_blob_area && area <= max_blob_area
@@ -90,12 +116,16 @@ void LEDDetector::findLeds(const cv::Mat &image, cv::Rect ROI, const int &thresh
       numPoints++;
     }
   }
-  ///Imshow for testing (added by S Turner)
-  /*for(cv::Point2f p : distorted_points){
-      cv::circle(test_image, p, 10, CV_RGB(0, 255, 255), 2);
+  //Imshow for testing (added by S Turner)
+  for(cv::Point2f p : distorted_points){
+      cv::circle(test_image, p, 10, CV_RGB(0, 255, 0), 2);
   }
-  cv::imshow("test",test_image);
-  cv::waitKey(1);*/
+  cv::namedWindow("Display LED detections",cv::WINDOW_NORMAL);
+  cv::namedWindow("Gauss",cv::WINDOW_NORMAL);
+  cv::imshow("Display LED detections",test_image);
+  cv::imshow("Gauss",gaussian_image);
+  cv::waitKey(1);
+
   // These will be used for the visualization
   distorted_detection_centers = distorted_points;
   std::cout << "number of points" << numPoints << std::endl;

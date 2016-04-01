@@ -87,6 +87,11 @@ public:
                        List2DPoints &pixel_positions, std::vector<cv::Point2f> &distorted_detection_centers,
                        const cv::Mat &camera_matrix_K, const std::vector<double> &camera_distortion_coeffs);
 
+#if CV_MAJOR_VERSION > 2
+  static void dilateErodeMat(UMat &_src);
+#else
+  static void dilateErodeMat(cv::Mat &_src);
+#endif
   /**
    * Calculates the region of interest (ROI) in the distorted image in which the points lie.
    *
