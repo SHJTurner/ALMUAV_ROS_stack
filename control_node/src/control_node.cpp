@@ -1,135 +1,181 @@
 /**
  *
- * Modifyed by Stig Turner
- * Controls attitude and throttle!
- * (position control is commented out)
+ * Author: Stig Turner
+ * Control node for ALMUAV
  *
- * @file offb_node.cpp
- * @brief offboard example node, written with mavros version 0.14.2, px4 flight
- * stack and tested in Gazebo SITL
+ *
  */
 
 #include <ros/ros.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/State.h>
 #include <std_msgs/Float64.h>
+#include <math.h>
 
-mavros_msgs::State current_state;
+#define InitPosHeight 2.0
+
+ros::Rate rate(20.0);
+ros::ServiceClient set_mode_client;
+ros::Publisher local_pos_pub;
+geometry_msgs::PoseStamped InitPos;
+mavros_msgs::State current_state; //UAV state
+
+//State machine enum
+enum States{
+    IDLE,
+    READY,
+    MOVE_TO_INIT_POS,
+    START_SETPOINT_STREAM,
+    ENABLE_OFFBOARD,
+    DESCEND,
+    EMERGENCY_STOP
+};
+
+//Current_state callback
 void state_cb(const mavros_msgs::State::ConstPtr& msg){
     current_state = *msg;
 }
+
+//Estimated_pose callback
+geometry_msgs::PoseWithCovarianceStamped estimated_pose;
+void pose_cb(const geometry_msgs::PoseWithCovarianceStamped& msg){
+        estimated_pose = *msg;
+}
+
+//Before entering offboard mode, the setpoint stream must be started otherwise the mode switch will be rejected.
+void start_setpoint_stream()
+{
+    ROS_INFO("Started streaming setpoints");
+    for(int i = 10; ros::ok() && i > 0; --i)
+    {
+        local_pos_pub.publish(InitPos);
+        ros::spinOnce();
+        rate.sleep();
+    }
+}
+
+//Enable offboard mode
+bool enable_offboard()
+{
+    mavros_msgs::SetMode offb_set_mode;
+    offb_set_mode.request.custom_mode = "OFFBOARD";
+    ROS_INFO("Swithing to OFFBOARD mode");
+    if(current_state.mode != "OFFBOARD")
+    {
+        if( !(set_mode_client.call(offb_set_mode) && offb_set_mode.response.success) )
+        {
+            ROS_WARN("Failed to enable OFFBOARD mode!");
+            local_pos_pub.publish(pose); //keep sending setpoints if it fails
+            return false;
+        }
+    }
+    ROS_INFO("OFFBOARD mode enabled");
+    return true;
+}
+
+//calc Euclidean distance
+double eu_dist_to_setpoint(double x, double y, double z)
+{
+    return sqrt( ( pow((x+estimated_pose.pose.pose.position.x),2) + pow((y+estimated_pose.pose.pose.position.y),2) + pow((z+estimated_pose.pose.pose.position.z),2) )  );
+}
+
+
 
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "control_node");
     ros::NodeHandle nh;
 
-    //Pose Publiser
-    //ros::Publication pose_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/vision_pose/pose",10);
+    //Create subscribers and publichers
+    //Subscribe to pose estimater
+    ros::Subscriber estimated_pose_sub = nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/mavros/vision_pose/pose_cov",1,pose_cb);
+    //Subscribe to UAV state
+    ros::Subscriber state_sub = nh.subscribe<mavros_msgs::State>("mavros/state", 10, state_cb);
+    //Create published for publiching setpoints
+    local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local");
+    //Create service client for setting UAV state
+    set_mode_client = nh.serviceClient<mavros_msgs::SetMode>("mavros/set_mode");
 
-    ros::Subscriber state_sub = nh.subscribe<mavros_msgs::State>
-            ("mavros/state", 10, state_cb);
-    ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>
-            ("mavros/setpoint_position/local", 10);
-    //Attitude
-    ros::Publisher att_att_pub = nh.advertise<geometry_msgs::PoseStamped>
-            ("mavros/setpoint_attitude/attitude",10);
-    ros::Publisher att_throttle_pub = nh.advertise<std_msgs::Float64>
-            ("/mavros/setpoint_attitude/att_throttle",10);
+    //Ready InitPos meassage
+    InitPos.pose.position.z = InitPosHeight;
+    InitPos.pose.position.x = 0;
+    InitPos.pose.position.y = 0;
+    InitPos.pose.orientation.z = 0.0; //YAW
 
-    ros::ServiceClient arming_client = nh.serviceClient<mavros_msgs::CommandBool>
-            ("mavros/cmd/arming");
-    ros::ServiceClient set_mode_client = nh.serviceClient<mavros_msgs::SetMode>
-            ("mavros/set_mode");
-
-    //the setpoint publishing rate MUST be faster than 2Hz
-    ros::Rate rate(20.0);
-
-    // wait for FCU connection
-    while(ros::ok() && current_state.connected){
+    ROS_INFO("Waiting for FCU connection");
+    //wait for FCU connection
+    while(ros::ok() && current_state.connected)
+    {
         ros::spinOnce();
         rate.sleep();
     }
+    ROS_INFO("Connected to FCU");
 
-    geometry_msgs::PoseStamped pose;
-    std_msgs::Float64 throttle;
-    uint testCount = 0;
-    pose.pose.position.z = 1.4;
-    pose.pose.position.x = 0;
-    pose.pose.position.y = 0;
-    pose.pose.orientation.z = 0.0; //YAW
-
-    //throttle.data = 0.1; //throttle
-    //pose.pose.orientation.x = 0; //pitch
-    //pose.pose.orientation.y = 0; //roll
-    //pose.pose.orientation.z = 0; //yaw
-    ROS_INFO("Sending 100 setpoints before swithing to OFFBOARD mode");
-    //send a few setpoints before starting (Otherwise it is not possible to change to OFFBOARD control)
-    for(int i = 100; ros::ok() && i > 0; --i){
-        //local_pos_pub.publish(pose);
-        att_throttle_pub.publish(throttle);
-        att_att_pub.publish(pose);
-	
+    ROS_INFO("Wating for UAV to be armed");
+    //wait for UAV to be armed
+    while(ros::ok() && !current_state.armed )
+    {
         ros::spinOnce();
         rate.sleep();
     }
-    
-    mavros_msgs::SetMode offb_set_mode;
-    offb_set_mode.request.custom_mode = "OFFBOARD";
+    ROS_INFO("UAV is armed");
 
-    mavros_msgs::CommandBool arm_cmd;
-    arm_cmd.request.value = true;
+    int state = IDLE;
+    int next_state = IDLE;
+    bool emergency_stop = false;
 
-    ros::Time last_request = ros::Time::now();
-    ROS_INFO("Arming at swithing to OFFBOARD mode");
-    while(ros::ok()){
-        if( current_state.mode != "OFFBOARD" &&
-            (ros::Time::now() - last_request > ros::Duration(5.0))){
-            if( set_mode_client.call(offb_set_mode) &&
-                offb_set_mode.response.success){
-                ROS_INFO("Offboard enabled");
-            }
-            last_request = ros::Time::now();
-        } else {
-            if( !current_state.armed &&
-                (ros::Time::now() - last_request > ros::Duration(5.0))){
-                if( arming_client.call(arm_cmd) &&
-                    arm_cmd.response.success){
-                    ROS_INFO("Vehicle armed");
-                }
-                last_request = ros::Time::now();
-            }
+    //state machine!
+    while(ros::ok())
+    {
+        state = next_state;
+
+        if(emergency_stop)
+        {
+            state = EMERGENCY_STOP;
+            next_state = EMERGENCY_STOP;
+        }
+        switch(state)
+        {
+            case IDLE:
+                //DONT DO ANYTHING
+                break;
+
+            case READY:
+                //WAIT FOR UAV TO BE DETECTED
+
+                break;
+            case START_SETPOINT_STREAM:
+                start_setpoint_stream();
+                next_state = ENABLE_OFFBOARD;
+                break;
+            case ENABLE_OFFBOARD:
+                if(enable_offboard())
+                    next_state = MOVE_TO_INIT_POS;
+                break;
+            case MOVE_TO_INIT_POS:
+                local_pos_pub.publish(InitPos); //publich INIT POS
+                //Go to descend if within 0.05 meters of setpoint
+                if(eu_dist_to_setpoint(InitPos.pose.position.x,InitPos.pose.position.y,InitPos.pose.position.z)> 0.05)
+                    next_state = DESCEND;
+                break;
+            case DESCEND:
+                //IF within tollerenct and not landend
+                    //DESCENT
+                //ELSE Switch state to MOVE TO INIT POS
+                break;
+            case EMERGENCY_STOP:
+                //DISARM AT ONCE!
+                ROS_ERROR_ONCE("EMERGENCY_STOP! DISARMING UAV!");
+                break;
         }
 
-        pose.pose.position.z = 1.4;
-        pose.pose.position.x = 0;
-        pose.pose.position.y = 0;
-        local_pos_pub.publish(pose);
-	
-	/*testCount++;
-    if(testCount < 250)
-	{
-        ROS_INFO("Throttle: 0.1 (%d)",(testCount*100)/250);
-        att_throttle_pub.publish(throttle);
-        att_att_pub.publish(pose);
-	}
-    else if( testCount < 500)
-    {
-        ROS_INFO("Throttle: 0.5 (%d)",((testCount-250)*100)/250);
-        throttle.data = 0.2;
-        att_throttle_pub.publish(throttle);
-    }
-	else
-	{
-        ROS_INFO("Throttle: 0.0");
-        throttle.data = 0.0;
-        att_throttle_pub.publish(throttle);
-	};*/
-
         ros::spinOnce();
         rate.sleep();
     }
+
+    ROS_INFO("Shutting down contril node");
     return 0;
 }
