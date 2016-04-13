@@ -15,23 +15,29 @@
 #include <std_msgs/Float64.h>
 #include <math.h>
 
-#define InitPosHeight 2.0
+#define InitPosHeight 1.0 //Meter
+#define descentSpeed 0.1 // Meter/secunds
+#define updateRate 20.0 //Hz
 
-ros::Rate rate(20.0);
+ros::Rate rate(updateRate);
 ros::ServiceClient set_mode_client;
 ros::Publisher local_pos_pub;
-geometry_msgs::PoseStamped InitPos;
 mavros_msgs::State current_state; //UAV state
+geometry_msgs::PoseStamped TargetPos;
+ros::Time last_descent_request;
+double init_altitude;
+bool streaming_setpoints;
 
 //State machine enum
 enum States{
     IDLE,
-    READY,
-    MOVE_TO_INIT_POS,
-    START_SETPOINT_STREAM,
-    ENABLE_OFFBOARD,
-    DESCEND,
-    EMERGENCY_STOP
+    SEARCHING, //Searching for the UAV
+    START_SETPOINT_STREAM, //Start sending target positions to the UAV
+    ENABLE_OFFBOARD, //Enable offboard control
+    WAIT_FOR_POS_REACHED, //Wait for the UAV to center it self over the platform
+    DESCEND, //Descend until landed
+    LANDED, //Landed, Disarm UAV
+    FAILSAFE //Failsafe, land the UAV regardless of position/state
 };
 
 //Current_state callback
@@ -46,15 +52,20 @@ void pose_cb(const geometry_msgs::PoseWithCovarianceStamped& msg){
 }
 
 //Before entering offboard mode, the setpoint stream must be started otherwise the mode switch will be rejected.
-void start_setpoint_stream()
-{
+bool start_setpoint_stream()
+{ros::Time::now();
+    setpoint_center(); //update setpoint, to location over the targer, in same altitude
+    streaming_setpoints = true;
+    static int i = 10;
+    i--;
     ROS_INFO("Started streaming setpoints");
-    for(int i = 10; ros::ok() && i > 0; --i)
+    if(ros::ok() && i > 0)
     {
-        local_pos_pub.publish(InitPos);
-        ros::spinOnce();
-        rate.sleep();
+        i = 10;
+        return true;
     }
+    else
+        return false;
 }
 
 //Enable offboard mode
@@ -68,7 +79,6 @@ bool enable_offboard()
         if( !(set_mode_client.call(offb_set_mode) && offb_set_mode.response.success) )
         {
             ROS_WARN("Failed to enable OFFBOARD mode!");
-            local_pos_pub.publish(pose); //keep sending setpoints if it fails
             return false;
         }
     }
@@ -76,10 +86,52 @@ bool enable_offboard()
     return true;
 }
 
-//calc Euclidean distance
-double eu_dist_to_setpoint(double x, double y, double z)
+//Moves UAV to center over platform at a minimum altitude of 1 meter (otherwise the altitude is holded)
+void setpoint_center()
 {
-    return sqrt( ( pow((x+estimated_pose.pose.pose.position.x),2) + pow((y+estimated_pose.pose.pose.position.y),2) + pow((z+estimated_pose.pose.pose.position.z),2) )  );
+    if(estimated_pose.pose.pose.position.z < InitPosHeight)
+    {
+        geometry_msgs::PoseStamped Pos;
+        InitPos.pose.position.z = InitPosHeight;
+        init_altitude = InitPosHeight;
+        InitPos.pose.position.x = 0;
+        InitPos.pose.position.y = 0;
+        InitPos.pose.orientation.z = 0.0;
+        TargetPos = Pos;
+    }
+    else
+    {
+        geometry_msgs::PoseStamped Pos;
+        InitPos.pose.position.z = estimated_pose.pose.pose.position.z;
+        init_altitude = estimated_pose.pose.pose.position.z;
+        InitPos.pose.position.x = 0;
+        InitPos.pose.position.y = 0;
+        InitPos.pose.orientation.z = 0.0;
+        TargetPos = Pos;
+    }
+}
+
+void descend()
+{
+        last_descent_request = ros::Time::now();
+        geometry_msgs::PoseStamped Pos;
+        InitPos.pose.position.z = init_altitude - (descentSpeed/updateRate);
+        InitPos.pose.position.x = 0;
+        InitPos.pose.position.y = 0;
+        InitPos.pose.orientation.z = 0.0;
+        TargetPos = Pos;
+}
+
+//calc Euclidean distance to center
+double eu_dist_to_center()
+{
+    return sqrt( ( pow((TargetPos.pose.position.x+estimated_pose.pose.pose.position.x),2) + pow((TargetPos.pose.position.y+estimated_pose.pose.pose.position.y),2) )  );
+}
+
+//calc Euclidean distance to target
+double eu_dist_to_target_point()
+{
+    return sqrt( ( pow((TargetPos.pose.position.x+estimated_pose.pose.pose.position.x),2) + pow((TargetPos.pose.position.y+estimated_pose.pose.pose.position.y),2) + pow((TargetPos.pose.position.z+estimated_pose.pose.pose.position.z),2) )  );
 }
 
 
@@ -99,27 +151,34 @@ int main(int argc, char **argv)
     //Create service client for setting UAV state
     set_mode_client = nh.serviceClient<mavros_msgs::SetMode>("mavros/set_mode");
 
-    //Ready InitPos meassage
-    InitPos.pose.position.z = InitPosHeight;
-    InitPos.pose.position.x = 0;
-    InitPos.pose.position.y = 0;
-    InitPos.pose.orientation.z = 0.0; //YAW
+    streaming_setpoints = false; //init boolean for streaming commands enabled/disabled
+    last_descent_request = ros::Time::now(); //assign value to las_descent request (as long as the time is past time it fine)
 
-    ROS_INFO("Waiting for FCU connection");
     //wait for FCU connection
-    while(ros::ok() && current_state.connected)
+    ROS_INFO("Waiting for FCU connection");
+    while(current_state.connected)
     {
         ros::spinOnce();
         rate.sleep();
+        if(!ros::ok())
+        {
+            ROS_INFO("Shutting down control node");
+            return 0;
+        }
     }
     ROS_INFO("Connected to FCU");
 
-    ROS_INFO("Wating for UAV to be armed");
     //wait for UAV to be armed
-    while(ros::ok() && !current_state.armed )
+    ROS_INFO("Wating for UAV to be armed");
+    while(!current_state.armed )
     {
         ros::spinOnce();
         rate.sleep();
+        if(!ros::ok())
+        {
+            ROS_INFO("Shutting down control node");
+            return 0;
+        }
     }
     ROS_INFO("UAV is armed");
 
@@ -134,8 +193,8 @@ int main(int argc, char **argv)
 
         if(emergency_stop)
         {
-            state = EMERGENCY_STOP;
-            next_state = EMERGENCY_STOP;
+            state = FAILSAFE;
+            next_state = FAILSAFE;
         }
         switch(state)
         {
@@ -143,39 +202,47 @@ int main(int argc, char **argv)
                 //DONT DO ANYTHING
                 break;
 
-            case READY:
+            case SEARCHING:
                 //WAIT FOR UAV TO BE DETECTED
+                break;
 
-                break;
             case START_SETPOINT_STREAM:
-                start_setpoint_stream();
-                next_state = ENABLE_OFFBOARD;
+                if(start_setpoint_stream())
+                    next_state = ENABLE_OFFBOARD;
                 break;
+
             case ENABLE_OFFBOARD:
                 if(enable_offboard())
-                    next_state = MOVE_TO_INIT_POS;
+                    next_state = WAIT_FOR_POS_REACHED;
                 break;
-            case MOVE_TO_INIT_POS:
-                local_pos_pub.publish(InitPos); //publich INIT POS
+
+            case WAIT_FOR_POS_REACHED:
                 //Go to descend if within 0.05 meters of setpoint
-                if(eu_dist_to_setpoint(InitPos.pose.position.x,InitPos.pose.position.y,InitPos.pose.position.z)> 0.05)
+                if(eu_dist_to_target_point() > 0.10)
                     next_state = DESCEND;
                 break;
+
             case DESCEND:
-                //IF within tollerenct and not landend
-                    //DESCENT
-                //ELSE Switch state to MOVE TO INIT POS
+                if(eu_dist_to_center() < 0.10)
+                    descend();
+                //if landed, then disarm
+                else
+                    next_state = WAIT_FOR_POS_REACHED;
                 break;
-            case EMERGENCY_STOP:
-                //DISARM AT ONCE!
-                ROS_ERROR_ONCE("EMERGENCY_STOP! DISARMING UAV!");
+
+            case FAILSAFE:
+                //Land
+                ROS_ERROR_ONCE("Failsafe enabled! Landing");
                 break;
         }
+
+        if(streaming_setpoints)
+            local_pos_pub.publish(TargetPos);
 
         ros::spinOnce();
         rate.sleep();
     }
 
-    ROS_INFO("Shutting down contril node");
+    ROS_INFO("Shutting down control node");
     return 0;
 }
