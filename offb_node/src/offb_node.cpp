@@ -26,6 +26,9 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "offb_node");
     ros::NodeHandle nh;
 
+    //Pose Publiser
+    //ros::Publication pose_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/vision_pose/pose",10);
+
     ros::Subscriber state_sub = nh.subscribe<mavros_msgs::State>
             ("mavros/state", 10, state_cb);
     ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>
@@ -53,8 +56,8 @@ int main(int argc, char **argv)
     geometry_msgs::PoseStamped pose;
     std_msgs::Float64 throttle;
     uint testCount = 0;
-    pose.pose.position.z = 3;
-    pose.pose.position.x = 3;
+    pose.pose.position.z = 1.4;
+    pose.pose.position.x = 0;
     pose.pose.position.y = 0;
     pose.pose.orientation.z = 0.0; //YAW
 
@@ -100,9 +103,9 @@ int main(int argc, char **argv)
             }
         }
 
-        pose.pose.position.z = 4;
-        pose.pose.position.x = 3;
-        pose.pose.position.y = 2;
+        pose.pose.position.z = 1.4;
+        pose.pose.position.x = 0;
+        pose.pose.position.y = 0;
         local_pos_pub.publish(pose);
 	
 	/*testCount++;

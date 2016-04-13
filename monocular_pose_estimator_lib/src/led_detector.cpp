@@ -64,8 +64,7 @@ void LEDDetector::findLeds(const cv::Mat &image, cv::Rect ROI, const int &thresh
 {
 
   // Threshold the image
-  cv::Mat bw_image, image_HSV, image_inRange,test_image;
-  test_image = image.clone();
+  cv::Mat bw_image, image_HSV, image_inRange;
   /// Modifyed by S. Turner
   /// Changed to detect RED blobs insted of bright blobs (System uses red LEDs insted of infrared)
   //cv::threshold(image, bwImage, threshold_value, 255, cv::THRESH_BINARY);
@@ -73,9 +72,9 @@ void LEDDetector::findLeds(const cv::Mat &image, cv::Rect ROI, const int &thresh
 
   //cv::cvtColor(image(ROI),image_HSV,cv::COLOR_RGB2HSV);
   cv::cvtColor(image(ROI),image_HSV,cv::COLOR_RGB2HSV);
-
   cv::inRange(image_HSV,cv::Scalar(105,156,136),cv::Scalar(138,255,255),image_inRange); //indoor dark test
-  cv::threshold(image_inRange, bw_image, threshold_value, 255, cv::THRESH_TOZERO);
+  cv::threshold(image_inRange, bw_image, threshold_value, 255, cv::THRESH_TOZERO); //Remove
+  //cv::imshow("bw_image",bw_image); //test
   ///---------------------------
   // Gaussian blur the image
   cv::Mat gaussian_image;
@@ -84,8 +83,10 @@ void LEDDetector::findLeds(const cv::Mat &image, cv::Rect ROI, const int &thresh
   ksize.height = 0;
   //GaussianBlur(bw_image.clone(), gaussian_image, ksize, gaussian_sigma, gaussian_sigma, cv::BORDER_DEFAULT);
   dilateErodeMat(bw_image);
-  //cv::imshow("Display filterd",bw_image);
-  //cv::waitKey(1);
+  cv::imshow("Display original",image(ROI));
+  cv::imshow("Display inRange",image_inRange(ROI));
+  cv::imshow("Display filterd",bw_image);
+
   gaussian_image = bw_image.clone();
 
 
@@ -121,6 +122,15 @@ void LEDDetector::findLeds(const cv::Mat &image, cv::Rect ROI, const int &thresh
       numPoints++;
     }
   }
+  cv::Mat tmp = image.clone();
+  for(cv::Point2f p : distorted_points)
+  {
+
+      line(tmp, cv::Point(p.x-4,p.y-4), cv::Point(p.x+4,p.y+4), cv::Scalar(0,200,0),1);
+      line(tmp, cv::Point(p.x-4,p.y+4), cv::Point(p.x+4,p.y-4), cv::Scalar(0,200,0),1);
+  }
+  cv::imshow("Display Keypoint",tmp(ROI));
+  cv::waitKey();
 
   // These will be used for the visualization
   distorted_detection_centers = distorted_points;

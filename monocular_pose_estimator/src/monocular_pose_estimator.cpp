@@ -50,7 +50,9 @@ MPENode::MPENode(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private)
   camera_info_sub_ = nh_.subscribe("/camera/camera_info", 1, &MPENode::cameraInfoCallback, this);
 
   // Initialize pose publisher
-  pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("estimated_pose", 1);
+  //pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("estimated_pose", 1);
+  //Initialize pose publisher (Pub to mavros) Edited by S. Turner
+  pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("/mavros/vision_pose/pose_cov", 1);
 
   // Initialize image publisher for visualization
   image_transport::ImageTransport image_transport(nh_);
