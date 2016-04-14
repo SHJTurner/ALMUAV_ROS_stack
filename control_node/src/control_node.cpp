@@ -22,7 +22,7 @@
 #define descentSpeed 0.20 // Meter/secunds
 #define updateRate 20.0 //Hz
 
-#define DEBUG
+#define SIMULATION
 
 ros::ServiceClient set_mode_client;
 ros::Publisher local_pos_pub;
@@ -47,7 +47,7 @@ enum States{
 void state_cb(const mavros_msgs::State::ConstPtr& msg){
     current_state = *msg;
 }
-#ifdef DEBUG
+#ifdef SIMULATION
 geometry_msgs::PoseStamped estimated_pose;
 void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg){
         estimated_pose = *msg;
@@ -64,7 +64,7 @@ void pose_cb(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg){
 //Moves UAV to center over platform at a minimum altitude of 1 meter (otherwise the altitude is holded)
 void setpoint_center()
 {
-#ifdef DEBUG
+#ifdef SIMULATION
     if(estimated_pose.pose.position.z < InitPosHeight)
 #else
     if(estimated_pose.pose.pose.position.z < InitPosHeight)
@@ -82,7 +82,7 @@ void setpoint_center()
     else
     {
         geometry_msgs::PoseStamped Pos;
-#ifdef DEBUG
+#ifdef SIMULATION
         Pos.pose.position.z = estimated_pose.pose.position.z;
         Prev_altitude = estimated_pose.pose.position.z;
 #else
@@ -145,7 +145,7 @@ void descend()
 //calc Euclidean distance to center
 double eu_dist_to_center()
 {
-#ifdef DEBUG
+#ifdef SIMULATION
     return sqrt( ( pow((TargetPos.pose.position.x-estimated_pose.pose.position.x),2) + pow((TargetPos.pose.position.y-estimated_pose.pose.position.y),2) )  );
 #else
     return sqrt( ( pow((TargetPos.pose.position.x-estimated_pose.pose.pose.position.x),2) + pow((TargetPos.pose.position.y-estimated_pose.pose.pose.position.y),2) )  );
@@ -155,7 +155,7 @@ double eu_dist_to_center()
 //calc Euclidean distance to target
 double eu_dist_to_target_point()
 {
-#ifdef DEBUG
+#ifdef SIMULATION
     ROS_INFO("dist_to_target: %f",sqrt( ( pow((TargetPos.pose.position.x-estimated_pose.pose.position.x),2) + pow((TargetPos.pose.position.y-estimated_pose.pose.position.y),2) + pow((TargetPos.pose.position.z-estimated_pose.pose.position.z),2) )  ));
     return sqrt( ( pow((TargetPos.pose.position.x-estimated_pose.pose.position.x),2) + pow((TargetPos.pose.position.y-estimated_pose.pose.position.y),2) + pow((TargetPos.pose.position.z-estimated_pose.pose.position.z),2) )  );
 #else
@@ -187,7 +187,7 @@ int main(int argc, char **argv)
     ros::Rate rate(updateRate);
     //Create subscribers and publichers
 
-#ifdef DEBUG
+#ifdef SIMULATION
     //Subscripe to MAVROS local pose
     ros::Subscriber estimated_pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("/mavros/local_position/pose",1,pose_cb);
 #else
