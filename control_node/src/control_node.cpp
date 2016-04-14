@@ -14,18 +14,21 @@
 #include <mavros_msgs/State.h>
 #include <std_msgs/Float64.h>
 #include <math.h>
+#include<stdio.h>
+#include <termios.h>    //termios, TCSANOW, ECHO, ICANON
+#include <unistd.h>     //STDIN_FILENO
 
-#define InitPosHeight 1.0 //Meter
-#define descentSpeed 0.1 // Meter/secunds
+#define InitPosHeight 1.5 //Meter
+#define descentSpeed 0.20 // Meter/secunds
 #define updateRate 20.0 //Hz
 
-ros::Rate rate(updateRate);
+#define DEBUG
+
 ros::ServiceClient set_mode_client;
 ros::Publisher local_pos_pub;
 mavros_msgs::State current_state; //UAV state
 geometry_msgs::PoseStamped TargetPos;
-ros::Time last_descent_request;
-double init_altitude;
+double Prev_altitude;
 bool streaming_setpoints;
 
 //State machine enum
@@ -44,16 +47,58 @@ enum States{
 void state_cb(const mavros_msgs::State::ConstPtr& msg){
     current_state = *msg;
 }
+#ifdef DEBUG
+geometry_msgs::PoseStamped estimated_pose;
+void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg){
+        estimated_pose = *msg;
+}
 
+#else
 //Estimated_pose callback
 geometry_msgs::PoseWithCovarianceStamped estimated_pose;
-void pose_cb(const geometry_msgs::PoseWithCovarianceStamped& msg){
+void pose_cb(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg){
         estimated_pose = *msg;
+}
+#endif
+
+//Moves UAV to center over platform at a minimum altitude of 1 meter (otherwise the altitude is holded)
+void setpoint_center()
+{
+#ifdef DEBUG
+    if(estimated_pose.pose.position.z < InitPosHeight)
+#else
+    if(estimated_pose.pose.pose.position.z < InitPosHeight)
+#endif
+    {
+        geometry_msgs::PoseStamped Pos;
+        Pos.pose.position.z = InitPosHeight;
+
+        Prev_altitude = InitPosHeight;
+        Pos.pose.position.x = 0;
+        Pos.pose.position.y = 0;
+        Pos.pose.orientation.z = 0.0;
+        TargetPos = Pos;
+    }
+    else
+    {
+        geometry_msgs::PoseStamped Pos;
+#ifdef DEBUG
+        Pos.pose.position.z = estimated_pose.pose.position.z;
+        Prev_altitude = estimated_pose.pose.position.z;
+#else
+        Pos.pose.position.z = estimated_pose.pose.pose.position.z;
+        Prev_altitude = estimated_pose.pose.pose.position.z;
+#endif
+        Pos.pose.position.x = 0;
+        Pos.pose.position.y = 0;
+        Pos.pose.orientation.z = 0.0;
+        TargetPos = Pos;
+    }
 }
 
 //Before entering offboard mode, the setpoint stream must be started otherwise the mode switch will be rejected.
 bool start_setpoint_stream()
-{ros::Time::now();
+{
     setpoint_center(); //update setpoint, to location over the targer, in same altitude
     streaming_setpoints = true;
     static int i = 10;
@@ -86,52 +131,51 @@ bool enable_offboard()
     return true;
 }
 
-//Moves UAV to center over platform at a minimum altitude of 1 meter (otherwise the altitude is holded)
-void setpoint_center()
-{
-    if(estimated_pose.pose.pose.position.z < InitPosHeight)
-    {
-        geometry_msgs::PoseStamped Pos;
-        InitPos.pose.position.z = InitPosHeight;
-        init_altitude = InitPosHeight;
-        InitPos.pose.position.x = 0;
-        InitPos.pose.position.y = 0;
-        InitPos.pose.orientation.z = 0.0;
-        TargetPos = Pos;
-    }
-    else
-    {
-        geometry_msgs::PoseStamped Pos;
-        InitPos.pose.position.z = estimated_pose.pose.pose.position.z;
-        init_altitude = estimated_pose.pose.pose.position.z;
-        InitPos.pose.position.x = 0;
-        InitPos.pose.position.y = 0;
-        InitPos.pose.orientation.z = 0.0;
-        TargetPos = Pos;
-    }
-}
-
 void descend()
 {
-        last_descent_request = ros::Time::now();
-        geometry_msgs::PoseStamped Pos;
-        InitPos.pose.position.z = init_altitude - (descentSpeed/updateRate);
-        InitPos.pose.position.x = 0;
-        InitPos.pose.position.y = 0;
-        InitPos.pose.orientation.z = 0.0;
-        TargetPos = Pos;
+    geometry_msgs::PoseStamped Pos;
+    Pos.pose.position.z = Prev_altitude - (descentSpeed/updateRate);
+    Prev_altitude = Prev_altitude - (descentSpeed/updateRate);
+    Pos.pose.position.x = 0;
+    Pos.pose.position.y = 0;
+    Pos.pose.orientation.z = 0.0;
+    TargetPos = Pos;
 }
 
 //calc Euclidean distance to center
 double eu_dist_to_center()
 {
-    return sqrt( ( pow((TargetPos.pose.position.x+estimated_pose.pose.pose.position.x),2) + pow((TargetPos.pose.position.y+estimated_pose.pose.pose.position.y),2) )  );
+#ifdef DEBUG
+    return sqrt( ( pow((TargetPos.pose.position.x-estimated_pose.pose.position.x),2) + pow((TargetPos.pose.position.y-estimated_pose.pose.position.y),2) )  );
+#else
+    return sqrt( ( pow((TargetPos.pose.position.x-estimated_pose.pose.pose.position.x),2) + pow((TargetPos.pose.position.y-estimated_pose.pose.pose.position.y),2) )  );
+#endif
 }
 
 //calc Euclidean distance to target
 double eu_dist_to_target_point()
 {
-    return sqrt( ( pow((TargetPos.pose.position.x+estimated_pose.pose.pose.position.x),2) + pow((TargetPos.pose.position.y+estimated_pose.pose.pose.position.y),2) + pow((TargetPos.pose.position.z+estimated_pose.pose.pose.position.z),2) )  );
+#ifdef DEBUG
+    ROS_INFO("dist_to_target: %f",sqrt( ( pow((TargetPos.pose.position.x-estimated_pose.pose.position.x),2) + pow((TargetPos.pose.position.y-estimated_pose.pose.position.y),2) + pow((TargetPos.pose.position.z-estimated_pose.pose.position.z),2) )  ));
+    return sqrt( ( pow((TargetPos.pose.position.x-estimated_pose.pose.position.x),2) + pow((TargetPos.pose.position.y-estimated_pose.pose.position.y),2) + pow((TargetPos.pose.position.z-estimated_pose.pose.position.z),2) )  );
+#else
+    return sqrt( ( pow((TargetPos.pose.position.x-estimated_pose.pose.pose.position.x),2) + pow((TargetPos.pose.position.y-estimated_pose.pose.pose.position.y),2) + pow((TargetPos.pose.position.z-estimated_pose.pose.pose.position.z),2) )  );
+#endif
+}
+
+//non blocking getch function
+int getch()
+{
+  static struct termios oldt, newt;
+  tcgetattr( STDIN_FILENO, &oldt);           // save old settings
+  newt = oldt;
+  newt.c_lflag &= ~(ICANON);                 // disable buffering
+  tcsetattr( STDIN_FILENO, TCSANOW, &newt);  // apply new settings
+
+  int c = getchar();  // read character (non-blocking)
+
+  tcsetattr( STDIN_FILENO, TCSANOW, &oldt);  // restore old settings
+  return c;
 }
 
 
@@ -140,19 +184,25 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "control_node");
     ros::NodeHandle nh;
-
+    ros::Rate rate(updateRate);
     //Create subscribers and publichers
+
+#ifdef DEBUG
+    //Subscripe to MAVROS local pose
+    ros::Subscriber estimated_pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("/mavros/local_position/pose",1,pose_cb);
+#else
     //Subscribe to pose estimater
     ros::Subscriber estimated_pose_sub = nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/mavros/vision_pose/pose_cov",1,pose_cb);
+#endif
     //Subscribe to UAV state
     ros::Subscriber state_sub = nh.subscribe<mavros_msgs::State>("mavros/state", 10, state_cb);
     //Create published for publiching setpoints
-    local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local");
+    local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local",1); //Queue set to one (Allways publich the newest!)
     //Create service client for setting UAV state
     set_mode_client = nh.serviceClient<mavros_msgs::SetMode>("mavros/set_mode");
 
     streaming_setpoints = false; //init boolean for streaming commands enabled/disabled
-    last_descent_request = ros::Time::now(); //assign value to las_descent request (as long as the time is past time it fine)
+
 
     //wait for FCU connection
     ROS_INFO("Waiting for FCU connection");
@@ -182,6 +232,7 @@ int main(int argc, char **argv)
     }
     ROS_INFO("UAV is armed");
 
+
     int state = IDLE;
     int next_state = IDLE;
     bool emergency_stop = false;
@@ -200,6 +251,11 @@ int main(int argc, char **argv)
         {
             case IDLE:
                 //DONT DO ANYTHING
+                if('s' == getch())
+                {
+                    ROS_INFO("Recived start ch");
+                    next_state = START_SETPOINT_STREAM;
+                }
                 break;
 
             case SEARCHING:
@@ -207,23 +263,27 @@ int main(int argc, char **argv)
                 break;
 
             case START_SETPOINT_STREAM:
+                ROS_INFO_ONCE("START_SETPOINT_STREAM");
                 if(start_setpoint_stream())
                     next_state = ENABLE_OFFBOARD;
                 break;
 
             case ENABLE_OFFBOARD:
+                ROS_INFO_ONCE("ENABLE_OFFBOARD");
                 if(enable_offboard())
                     next_state = WAIT_FOR_POS_REACHED;
                 break;
 
             case WAIT_FOR_POS_REACHED:
+                ROS_INFO("WAIT_FOR_POS_REACHED");
                 //Go to descend if within 0.05 meters of setpoint
-                if(eu_dist_to_target_point() > 0.10)
+                if(eu_dist_to_target_point() < 0.30)
                     next_state = DESCEND;
                 break;
 
             case DESCEND:
-                if(eu_dist_to_center() < 0.10)
+                ROS_INFO("DESCEND");
+                if(eu_dist_to_center() < 0.30)
                     descend();
                 //if landed, then disarm
                 else
@@ -237,7 +297,10 @@ int main(int argc, char **argv)
         }
 
         if(streaming_setpoints)
+        {
+            ROS_INFO_ONCE("Started Publishing TargetPositions");
             local_pos_pub.publish(TargetPos);
+        }
 
         ros::spinOnce();
         rate.sleep();
