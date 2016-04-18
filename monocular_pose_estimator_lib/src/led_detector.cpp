@@ -36,15 +36,15 @@ namespace monocular_pose_estimator
 {
 
 
-#if CV_MAJOR_VERSION > 2
-void LEDDetector::dilateErodeMat(UMat &_src) {
-    Mat _element = getStructuringElement(MORPH_ELLIPSE,
+
+/*void LEDDetector::dilateErodeMat(UMat &_src) {
+   Mat _element = getStructuringElement(MORPH_ELLIPSE,
             Size(2*EROSION_SIZE + 1, 2*EROSION_SIZE+1),
             Point(EROSION_SIZE, EROSION_SIZE));
     dilate(_src, _src, _element, Point(-1, -1), DILATE_ITERATIONS);
     erode(_src, _src, _element, Point(-1, -1), ERODE_ITERATIONS);
-}
-#else
+}*/
+
 void LEDDetector::dilateErodeMat(cv::Mat &_src) {
     cv::Mat _element = cv::getStructuringElement(cv::MORPH_ELLIPSE,
             cv::Size(2*EROSION_SIZE + 1, 2*EROSION_SIZE+1),
@@ -52,7 +52,7 @@ void LEDDetector::dilateErodeMat(cv::Mat &_src) {
     cv::dilate(_src, _src, _element, cv::Point(-1, -1), DILATE_ITERATIONS);
     cv::erode(_src, _src, _element, cv::Point(-1, -1), ERODE_ITERATIONS);
 }
-#endif
+
 
 
 // LED detector
@@ -83,9 +83,9 @@ void LEDDetector::findLeds(const cv::Mat &image, cv::Rect ROI, const int &thresh
   ksize.height = 0;
   //GaussianBlur(bw_image.clone(), gaussian_image, ksize, gaussian_sigma, gaussian_sigma, cv::BORDER_DEFAULT);
   dilateErodeMat(bw_image);
-  cv::imshow("Display original",image(ROI));
-  cv::imshow("Display inRange",image_inRange(ROI));
-  cv::imshow("Display filterd",bw_image);
+  //cv::imshow("Display original",image(ROI));
+  //cv::imshow("Display inRange",image_inRange(ROI));
+  //cv::imshow("Display filterd",bw_image);
 
   gaussian_image = bw_image.clone();
 
@@ -129,8 +129,8 @@ void LEDDetector::findLeds(const cv::Mat &image, cv::Rect ROI, const int &thresh
       line(tmp, cv::Point(p.x-4,p.y-4), cv::Point(p.x+4,p.y+4), cv::Scalar(0,200,0),1);
       line(tmp, cv::Point(p.x-4,p.y+4), cv::Point(p.x+4,p.y-4), cv::Scalar(0,200,0),1);
   }
-  cv::imshow("Display Keypoint",tmp(ROI));
-  cv::waitKey();
+  //cv::imshow("Display Keypoint",tmp(ROI));
+  //cv::waitKey();
 
   // These will be used for the visualization
   distorted_detection_centers = distorted_points;

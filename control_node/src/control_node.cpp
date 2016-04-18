@@ -239,6 +239,7 @@ int main(int argc, char **argv)
         }
     }
     ROS_INFO("UAV is armed");
+    ROS_INFO("Press \"space\" to trigger FailSafe");
 
     //----------------------------------------------------------------
     //State machine
@@ -256,7 +257,7 @@ int main(int argc, char **argv)
             statePrinted = false;
         }
 
-        if(emergency_stop)
+        if(emergency_stop || 32 == getch())
         {
             state = FAILSAFE;
             next_state = FAILSAFE;
