@@ -28,8 +28,8 @@
 #include "monocular_pose_estimator_lib/led_detector.h"
 
 #define ERODE_ITERATIONS        3
-#define ERODE_PREP_ITERATIONS   5
-#define DILATE_ITERATIONS       4
+#define ERODE_PREP_ITERATIONS   3
+#define DILATE_ITERATIONS       3
 #define EROSION_SIZE            2
 
 namespace monocular_pose_estimator
@@ -81,12 +81,13 @@ void LEDDetector::findLeds(const cv::Mat &image, cv::Rect ROI, const int &thresh
   cv::Size ksize; // Gaussian kernel size. If equal to zero, then the kerenl size is computed from the sigma
   ksize.width = 0;
   ksize.height = 0;
+  //cv::imshow("Display filterd",bw_image);
   //GaussianBlur(bw_image.clone(), gaussian_image, ksize, gaussian_sigma, gaussian_sigma, cv::BORDER_DEFAULT);
   dilateErodeMat(bw_image);
   //cv::imshow("Display original",image(ROI));
   //cv::imshow("Display inRange",image_inRange(ROI));
-  //cv::imshow("Display filterd",bw_image);
 
+  cv::waitKey(1);
   gaussian_image = bw_image.clone();
 
 
