@@ -1,7 +1,7 @@
 <launch>
 
 	<!-- Name of the YAML file containing the marker positions -->
-	<arg name="YAML_file_name" default="IRIS_marker_positions_5_LEDs"/>
+	<arg name="YAML_file_name" default="IRIS_PLUS_marker_positions_5_LEDs"/>
 
 	<!-- File containing the the marker positions in the trackable's frame of reference -->
 	<arg name="marker_positions_file" default="$(find monocular_pose_estimator)/marker_positions/$(arg YAML_file_name).yaml"/>
@@ -11,11 +11,11 @@
 			<param name= "threshold_value" value = "140" />
 			<param name= "gaussian_sigma" value = "0.6" />
 			<param name= "min_blob_area" value = "10" />
-			<param name= "max_blob_area" value = "60000" />
+			<param name= "max_blob_area" value = "10000" />
 			<param name= "max_width_height_distortion" value = "1.0" />
 			<param name= "max_circular_distortion" value = "1.0" />
-			<param name= "back_projection_pixel_tolerance" value = "7" />
-			<param name= "nearest_neighbour_pixel_tolerance" value = "50" />
+			<param name= "back_projection_pixel_tolerance" value = "15" />
+			<param name= "nearest_neighbour_pixel_tolerance" value = "30" />
 			<param name= "certainty_threshold" value = "0.75" />
 			<param name= "valid_correspondence_threshold" value = "0.7" />
 			<param name= "roi_border_thickness" value="40" />
