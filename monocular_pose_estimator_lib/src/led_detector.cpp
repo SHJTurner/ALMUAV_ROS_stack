@@ -72,7 +72,7 @@ void LEDDetector::findLeds(const cv::Mat &image, cv::Rect ROI, const int &thresh
 
   //cv::cvtColor(image(ROI),image_HSV,cv::COLOR_RGB2HSV);
   cv::cvtColor(image(ROI),image_HSV,cv::COLOR_RGB2HSV);
-  cv::inRange(image_HSV,cv::Scalar(105,156,136),cv::Scalar(138,255,255),image_inRange); //indoor dark test
+  cv::inRange(image_HSV,cv::Scalar(105,87,170),cv::Scalar(144,255,255),image_inRange); //indoor dark test
   cv::threshold(image_inRange, bw_image, threshold_value, 255, cv::THRESH_TOZERO); //Remove
   //cv::imshow("bw_image",bw_image); //test
   ///---------------------------
@@ -82,12 +82,12 @@ void LEDDetector::findLeds(const cv::Mat &image, cv::Rect ROI, const int &thresh
   ksize.width = 0;
   ksize.height = 0;
   //cv::imshow("Display filterd",bw_image);
-  //GaussianBlur(bw_image.clone(), gaussian_image, ksize, gaussian_sigma, gaussian_sigma, cv::BORDER_DEFAULT);
+  GaussianBlur(bw_image.clone(), gaussian_image, ksize, gaussian_sigma, gaussian_sigma, cv::BORDER_DEFAULT);
   dilateErodeMat(bw_image);
   //cv::imshow("Display original",image(ROI));
-  //cv::imshow("Display inRange",image_inRange(ROI));
+  //cv::imshow("Display ED",bw_image(ROI));
 
-  cv::waitKey(1);
+  //cv::waitKey(1);
   gaussian_image = bw_image.clone();
 
 
@@ -123,15 +123,15 @@ void LEDDetector::findLeds(const cv::Mat &image, cv::Rect ROI, const int &thresh
       numPoints++;
     }
   }
-  cv::Mat tmp = image.clone();
+  /*cv::Mat tmp = image.clone();
   for(cv::Point2f p : distorted_points)
   {
 
       line(tmp, cv::Point(p.x-4,p.y-4), cv::Point(p.x+4,p.y+4), cv::Scalar(0,200,0),1);
       line(tmp, cv::Point(p.x-4,p.y+4), cv::Point(p.x+4,p.y-4), cv::Scalar(0,200,0),1);
   }
-  //cv::imshow("Display Keypoint",tmp(ROI));
-  //cv::waitKey();
+  cv::imshow("Display Keypoint",tmp(ROI));
+  cv::waitKey(1);*/
 
   // These will be used for the visualization
   distorted_detection_centers = distorted_points;

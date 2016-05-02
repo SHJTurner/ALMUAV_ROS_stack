@@ -203,7 +203,6 @@ void MPENode::imageCallback(const sensor_msgs::Image::ConstPtr& image_msg)
     //cv::cvtColor(visualized_image, visualized_image, CV_GRAY2RGB);
 
     trackable_object_.augmentImage(visualized_image,found_body_pose);
-
     // Publish image for visualization
     cv_bridge::CvImage visualized_image_msg;
     visualized_image_msg.header = image_msg->header;
