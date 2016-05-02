@@ -39,7 +39,7 @@ enum States{
     IDLE,
     SEARCHING, //Searching for the UAV
     START_SETPOINT_STREAM, //Start sending target positions to the UAV
-    ENABLE_OFFBOARD, //Enable offboard control
+    //ENABLE_OFFBOARD, //Enable offboard control (Offboard is enabled from Tx module (PWM/PPM))
     HoldPosition, //Wait for the UAV to center it self over the platform
     DESCEND, //Descend until landed
     LANDED, //Landed, Disarm UAV
@@ -50,7 +50,14 @@ enum States{
 
 //Current_state callback
 void state_cb(const mavros_msgs::State::ConstPtr& msg){
+    static std::string pre_offboard_state = " ";
+
     current_state = *msg;
+    if(pre_offboard_state != current_state.mode) //Print mode if changed
+    {
+        ROS_WARN("Current mode: %s\n",current_state.mode.c_str());
+        pre_offboard_state = current_state.mode;
+    }
 }
 
 //Current_state callback
@@ -205,8 +212,8 @@ int main(int argc, char **argv)
         }
     }
     ROS_INFO("UAV is armed");
-    ROS_INFO("Press and hold \"space\" to trigger failsafe");
-    ROS_INFO("Press and hold shift + 'D' to trigger killswitch/disarm immediately");
+    ROS_INFO("Press and hold \"space\" to trigger Killswitch/disarm immediately");
+    //ROS_INFO("Press and hold shift + 'D' to trigger killswitch/disarm immediately");
 
     //----------------------------------------------------------------
     //State machine
@@ -223,12 +230,12 @@ int main(int argc, char **argv)
             statePrinted = false;
         }
         int c = getch();
-        if(32 == c)
+        /*if(32 == c)
         {
             state = FAILSAFE;
             next_state = FAILSAFE;
-        }
-        if('D' == c)
+        }*/
+        if(32 == c)
         {
             state = KILLSWITCH;
             next_state = KILLSWITCH;
@@ -267,23 +274,7 @@ int main(int argc, char **argv)
                     statePrinted = true;
                 }
                 if(start_setpoint_stream())
-                    next_state = ENABLE_OFFBOARD;
-                break;
-
-            case ENABLE_OFFBOARD:
-                if(!statePrinted)
-                {
-                    ROS_INFO("STATE: ENABLE_OFFBOARD");
-                    ROS_INFO("Enableling offboard mode");
-                    statePrinted = true;
-                }
-                if(enable_offboard())
-                {
-                    ROS_INFO("Offboard mode enabled");
                     next_state = HoldPosition;
-                }
-                else
-                    ROS_INFO("Failed to enable offboard mode");
                 break;
 
             case HoldPosition:
