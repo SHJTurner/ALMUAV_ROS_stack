@@ -6,7 +6,7 @@
 % %connect to roscore or start a new one
  clc; clear; close all;
 
-bag = rosbag('/home/turner/Workspaces/catkin_ws_ALMUAV/Recordings/Indoor_UAVtest_010416_withEstimatedPose.bag');
+bag = rosbag('/home/turner/Workspaces/catkin_ALMUAV_workspace/Recordings/Indoor_UAVtest_010416_withEstimatedPose.bag');
 bagselect_Pose = select(bag,'Topic','/monocular_pose_estimator/estimated_pose');
 bagselect_Video = select(bag,'Topic','/monocular_pose_estimator/image_with_detections');
 poseData = readMessages(bagselect_Pose);
@@ -100,7 +100,7 @@ title('Yaw')
 
 
 %% Plot 3D of path
-v = VideoWriter('/home/turner/Workspaces/catkin_ws_ALMUAV/Recordings/out.avi');
+v = VideoWriter('/home/turner/Workspaces/catkin_ALMUAV_workspace/Recordings/out1.avi');
 open(v);
 fig = figure('Position', [0, 0, 1280,720]);
 PoseTimeIndex = 1;
@@ -119,9 +119,9 @@ for n=1:length(frameData)
     xlabel('Meter');
     ylabel('Meter');
     zlabel('Meter');
-    xlim([-0.75,0.75]);
-    ylim([-0.75,0.75]);
-    zlim([-0.15,1.5]);
+    xlim([-1.00,1.00]);
+    ylim([-1.00,1.00]);
+    zlim([-0.15,2.0]);
     title('Position');
     
     subplot(1,2,2), subimage(frameData{n});

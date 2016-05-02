@@ -11,16 +11,16 @@
 % estimatedPose = rossubscriber('/monocular_pose_estimator/estimated_pose'); 
 % number_of_samples = 100;
 
-bag = rosbag('/home/turner/Workspaces/catkin_ws_ALMUAV/Recordings/120cm_breadboard.bag');
-bagselect_Pose = select(bag,'Topic','/monocular_pose_estimator/estimated_pose');
+bag = rosbag('/home/turner/Workspaces/catkin_ALMUAV_workspace/250cmdegs/250cm0deg.bag');%'/home/turner/Workspaces/catkin_ws_ALMUAV/Recordings/120cm_breadboard.bag');
+bagselect_Pose = select(bag,'Topic','/mavros/vision_pose/pose_cov');%'/monocular_pose_estimator/estimated_pose');
 poseData = readMessages(bagselect_Pose);
 %Recive data
 
 %poseData{2}
 %for n = 1:number_of_samples
 %poseData = receive(estimatedPose,5);
-TimeStart = 2.5;
-TimeEnd = 6.5;
+TimeStart = 0.0;
+TimeEnd = 5.0;
 DeltaTime = TimeEnd -TimeStart;
 TimeOffsetSec = double(poseData{1}.Header.Stamp.Sec) + (double(poseData{1}.Header.Stamp.Nsec) * 0.000000001);
 for n = 1:length(poseData)
@@ -28,7 +28,7 @@ for n = 1:length(poseData)
         PoseTimeSec(n) = poseData{n}.Header.Stamp.Sec;
         PoseTimeNsec(n) = poseData{n}.Header.Stamp.Nsec;
         NanoSec = double(poseData{n}.Header.Stamp.Nsec) * 0.000000001;
-        PoseTime(n) = double(poseData{n}.Header.Stamp.Sec) + NanoSec - TimeOffsetSec - double(TimeStart)-1.0;
+        PoseTime(n) = double(poseData{n}.Header.Stamp.Sec) + NanoSec - TimeOffsetSec - double(TimeStart);
         PosData(n,1) = poseData{n}.Pose.Pose.Position.X;
         PosData(n,2) = poseData{n}.Pose.Pose.Position.Y;
         PosData(n,3) = poseData{n}.Pose.Pose.Position.Z;
@@ -41,6 +41,12 @@ end
 %rosshutdown;
 %Calc orientation in Eular
 EuOriData = quat2eul(QOriData);
+for n=1:length(EuOriData)
+    EuOriData(n,1) = EuOriData(n,1)*(180/pi)+180;
+    EuOriData(n,2) = EuOriData(n,2)*(180/pi);
+    EuOriData(n,3) = EuOriData(n,3)*(180/pi);
+end
+
 
 %% Plot data
 % figure
@@ -56,10 +62,13 @@ EuOriData = quat2eul(QOriData);
 % hold off
 
 %% Plot X,Y,Z,Pitch,Roll,Yaw
+%limitY =[-3.14,3.14];
+limitY = [-180,180];
+
 figure
-TimeLabel = 'Seconds';
-DistanceLabel = 'Meter';
-AngleLabel = 'Radians';
+TimeLabel = 'time [s]';
+DistanceLabel = 'position [m]';
+AngleLabel = 'angle [deg]';
 ax = subplot(3,2,1);
 plot(PoseTime,PosData(:,1),'r');
 grid(ax,'on')
@@ -67,14 +76,15 @@ xlabel(TimeLabel);
 ylabel(DistanceLabel);
 xlim([0,DeltaTime]);
 mu = mean(PosData(:,1));
-ylim([mu-0.03,mu+0.03]);
+ylim([mu-0.05,mu+0.05]);
 title('X')
 hline = refline([0 mu]);
 hline.Color = [0.5 0.5 0.5];
 set(hline,'LineStyle','--');
 hline.LineWidth = 1.5;
 uistack(hline,'bottom')
-
+STDx = std(PosData(:,1))
+MEANx = mean(PosData(:,1))
 
 ax = subplot(3,2,3);
 plot(PoseTime,PosData(:,2),'g')
@@ -83,13 +93,15 @@ xlabel(TimeLabel)
 ylabel(DistanceLabel)
 xlim([0,DeltaTime]);
 mu = mean(PosData(:,2));
-ylim([mu-0.03,mu+0.03]);
+ylim([mu-0.05,mu+0.05]);
 title('Y')
 hline = refline([0 mu]);
 hline.Color = [0.5 0.5 0.5];
 set(hline,'LineStyle','--');
 hline.LineWidth = 1.5;
 uistack(hline,'bottom')
+STDy = std(PosData(:,2))
+MEANy = mean(PosData(:,2))
 
 ax = subplot(3,2,5);
 plot(PoseTime,PosData(:,3),'b')
@@ -98,13 +110,16 @@ xlabel(TimeLabel)
 ylabel(DistanceLabel)
 xlim([0,DeltaTime]);
 mu = mean(PosData(:,3));
-ylim([mu-0.03,mu+0.03]);
+ylim([mu-0.05,mu+0.05]);
 title('Z')
 hline = refline([0 mu]);
 hline.Color = [0.5 0.5 0.5];
 set(hline,'LineStyle','--');
 hline.LineWidth = 1.5;
 uistack(hline,'bottom')
+STDz = std(PosData(:,3))
+MEANz = mean(PosData(:,3))
+
 
 ax = subplot(3,2,2);
 plot(PoseTime,EuOriData(:,1),'r')
@@ -112,14 +127,16 @@ grid(ax,'on')
 xlabel(TimeLabel)
 ylabel(AngleLabel)
 xlim([0,DeltaTime]);
-ylim([-3.14,3.14]);
-title('Pitch')
+ylim(limitY);
+title('Roll')
 mu = mean(EuOriData(:,1));
 hline = refline([0 mu]);
 hline.Color = [0.5 0.5 0.5];
 set(hline,'LineStyle','--');
 hline.LineWidth = 1.5;
 uistack(hline,'bottom')
+STDr = std(EuOriData(:,1))
+MEANr = mean(EuOriData(:,1))
 
 ax = subplot(3,2,4);
 plot(PoseTime,EuOriData(:,2),'g')
@@ -127,14 +144,16 @@ grid(ax,'on')
 xlabel(TimeLabel)
 ylabel(AngleLabel)
 xlim([0,DeltaTime]);
-ylim([-3.14,3.14]);
-title('Roll')
+ylim(limitY);
+title('Pitch')
 mu = mean(EuOriData(:,2));
 hline = refline([0 mu]);
 hline.Color = [0.5 0.5 0.5];
 set(hline,'LineStyle','--');
 hline.LineWidth = 1.5;
 uistack(hline,'bottom')
+STDp = std(EuOriData(:,2))
+MEANp = mean(EuOriData(:,2))
 
 ax = subplot(3,2,6);
 plot(PoseTime,EuOriData(:,3),'b')
@@ -142,7 +161,7 @@ grid(ax,'on')
 xlabel(TimeLabel)
 ylabel(AngleLabel)
 xlim([0,DeltaTime]);
-ylim([-3.14,3.14]);
+ylim(limitY);
 title('Yaw')
 mu = mean(EuOriData(:,3));
 hline = refline([0 mu]);
@@ -150,7 +169,8 @@ hline.Color = [0.5 0.5 0.5];
 set(hline,'LineStyle','--');
 hline.LineWidth = 1.5;
 uistack(hline,'bottom')
-
+STDy = std(EuOriData(:,3))
+MEANy = mean(EuOriData(:,3))
 
 %% Plot 3D of path
 figure;
@@ -169,22 +189,22 @@ R = [1 0 0; 0 1 0; 0 0 1];
 plotCamera('Location',[0 0 -0.10],'Orientation',R,'Size',0.05,'Color',[0,0,0]);
 
 %% Close up orientation plot
-figure
-[m,n] = size(PosData);
-scatter3(PosData(:,1),PosData(:,2),PosData(:,3),'x','r');
-hold on
-for(c = 1:m)
-R = eul2rotm(EuOriData(c,:));
-vec = [0 0 0.01] * R;
-quiver3(PosData(c,1),PosData(c,2),PosData(c,3),vec(1),vec(2),vec(3),'LineWidth',1,'MaxHeadSize',1);
-hold on
-end
-xlabel('X');
-ylabel('Y');
-zlabel('Z');
-title('Orientatin plot of detections');
-xlim([min(PosData(:,1))-0.015,max(PosData(:,1))+0.015]);
-ylim([min(PosData(:,2))-0.015,max(PosData(:,2))+0.015]);
-zlim([min(PosData(:,3))-0.015,max(PosData(:,3))+0.015]);
+%figure
+%[m,n] = size(PosData);
+%scatter3(PosData(:,1),PosData(:,2),PosData(:,3),'x','r');
+%hold on
+%for(c = 1:m)
+%R = eul2rotm(EuOriData(c,:));
+%vec = [0 0 0.01] * R;
+%quiver3(PosData(c,1),PosData(c,2),PosData(c,3),vec(1),vec(2),vec(3),'LineWidth',1,'MaxHeadSize',1);
+%hold on
+%end
+%xlabel('X');
+%ylabel('Y');
+%zlabel('Z');
+%title('Orientatin plot of detections');
+%xlim([min(PosData(:,1))-0.015,max(PosData(:,1))+0.015]);
+%ylim([min(PosData(:,2))-0.015,max(PosData(:,2))+0.015]);
+%zlim([min(PosData(:,3))-0.015,max(PosData(:,3))+0.015]);
 
 
