@@ -19,7 +19,7 @@
     <param name="io_method" value="mmap"/>
   </node>
     
-  <node name="recorder" pkg="rosbag" type="record" args="record -o /home/turner/Workspaces/catkin_ALMUAV_workspace/ /camera/image_raw /camera/camera_info /monocular_pose_estimator/image_with_detections /mavros/vision_pose/pose_cov"></node>
+  <node name="recorder" pkg="rosbag" type="record" args="record -o /home/turner/Workspaces/catkin_ALMUAV_workspace/ --duration=6 camera/image_raw camera/ camera_info /monocular_pose_estimator/image_with_detections /mavros/vision_pose/pose_cov"></node>
     <!--<node name="img_proc" pkg="image_proc" type="image_proc" ns="usb_cam">
         <param name="queue_size" value="1" />
     </node>-->

@@ -73,7 +73,8 @@ void LEDDetector::findLeds(const cv::Mat &image, cv::Rect ROI, const int &thresh
   //cv::cvtColor(image(ROI),image_HSV,cv::COLOR_RGB2HSV);
   cv::cvtColor(image(ROI),image_HSV,cv::COLOR_RGB2HSV);
   cv::inRange(image_HSV,cv::Scalar(105,87,170),cv::Scalar(144,255,255),image_inRange); //indoor dark test
-  cv::threshold(image_inRange, bw_image, threshold_value, 255, cv::THRESH_TOZERO); //Remove
+  //cv::inRange(image_HSV,cv::Scalar(97,55,53),cv::Scalar(140,255,255),image_inRange); //Test 2 thresholds
+cv::threshold(image_inRange, bw_image, threshold_value, 255, cv::THRESH_TOZERO); //Remove
   //cv::imshow("bw_image",bw_image); //test
   ///---------------------------
   // Gaussian blur the image

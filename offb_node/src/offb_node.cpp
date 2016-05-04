@@ -251,7 +251,7 @@ int main(int argc, char **argv)
                 }
                 if('s' == getch())
                 {
-                    next_state = SEARCHING;
+                    next_state = START_SETPOINT_STREAM;
                 }
                 break;
 
