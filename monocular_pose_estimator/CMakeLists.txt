@@ -21,7 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(Eigen REQUIRED)
 
 # Add opencv
-find_package(OpenCV 2 REQUIRED)
+find_package(OpenCV 3 REQUIRED)
 
 # Generate the reconfigure options
 generate_dynamic_reconfigure_options(cfg/MonocularPoseEstimator.cfg)

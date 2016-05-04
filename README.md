@@ -1,5 +1,6 @@
 # ALMUAV
 ROS Nodes
+The code depends on opencv 3.. As ROS (jade) precombiled binarys link upagainst opencv 2, they have to be recompiled. To do so: "sudo apt-get remove ros-jade-cv-bridge" (removes cv_bridge and all packages that depends on it), clone https://github.com/ros-perception/image_pipeline and https://github.com/ros-perception/vision_opencv/ into your catkin workspace. go thouth all the cmakelists.txt in the downloaded code and change find_package(opencv) to find_package(opencv 3). call "catkin_make" clean. install opencv3 "sudo apt-get install ros-jade-opencv3". Now call catkin_make. All the packages needed is now recompiled.
 
 ##offb_node
 offboard MAVLink node for testing. Should not be used with UAV with props!
