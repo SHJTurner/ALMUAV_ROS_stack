@@ -10,7 +10,7 @@
     <node pkg="nodelet" type="nodelet" name="mpe_nodelet_manager"  args="manager" output="screen">
 			<param name= "threshold_value" value = "140" />
 			<param name= "gaussian_sigma" value = "0.6" />
-			<param name= "min_blob_area" value = "1" />
+			<param name= "min_blob_area" value = "10" />
 			<param name= "max_blob_area" value = "10000" />
 			<param name= "max_width_height_distortion" value = "1.0" />
 			<param name= "max_circular_distortion" value = "1.0" />
@@ -26,7 +26,6 @@
 			<!-- all other parameters are with the nodelet manager due to namespace issues with dynamic reconfigure -->
     </node>
 
-  	<node name="view_visualisation_image" pkg="image_view" type="image_view" args="image:=/monocular_pose_estimator/image_with_detections" />
 	<!-- Remap estimated pose to mavros -->
 	<remap from="/monocular_pose_estimator/estimated_pose" to="/mavros/vision_pose/pose"/>
   </group>

@@ -32,18 +32,20 @@
 #define DILATE_ITERATIONS       3
 #define EROSION_SIZE            2
 
+//#define USEGPU;
+
 namespace monocular_pose_estimator
 {
 
 
 
-/*void LEDDetector::dilateErodeMat(UMat &_src) {
-   Mat _element = getStructuringElement(MORPH_ELLIPSE,
-            Size(2*EROSION_SIZE + 1, 2*EROSION_SIZE+1),
-            Point(EROSION_SIZE, EROSION_SIZE));
-    dilate(_src, _src, _element, Point(-1, -1), DILATE_ITERATIONS);
-    erode(_src, _src, _element, Point(-1, -1), ERODE_ITERATIONS);
-}*/
+void LEDDetector::dilateErodeMat(cv::UMat &_src) {
+   cv::Mat _element = cv::getStructuringElement(cv::MORPH_ELLIPSE,
+            cv::Size(2*EROSION_SIZE + 1, 2*EROSION_SIZE+1),
+            cv::Point(EROSION_SIZE, EROSION_SIZE));
+    cv::dilate(_src, _src, _element, cv::Point(-1, -1), DILATE_ITERATIONS);
+    cv::erode(_src, _src, _element, cv::Point(-1, -1), ERODE_ITERATIONS);
+}
 
 void LEDDetector::dilateErodeMat(cv::Mat &_src) {
     cv::Mat _element = cv::getStructuringElement(cv::MORPH_ELLIPSE,
@@ -63,22 +65,34 @@ void LEDDetector::findLeds(const cv::Mat &image, cv::Rect ROI, const int &thresh
                            const cv::Mat &camera_matrix_K, const std::vector<double> &camera_distortion_coeffs)
 {
 
+#ifdef USEGPU
+    static cv::UMat Uimage;
+    static cv::UMat bw_image, image_HSV, image_inRange,gaussian_image;
+    image.copyTo(Uimage);
+#else
+    cv::Mat bw_image, image_HSV, image_inRange,gaussian_image;
+#endif
   // Threshold the image
-  cv::Mat bw_image, image_HSV, image_inRange;
-  /// Modifyed by S. Turner
+
+  //cv::Mat bw_image, image_HSV, image_inRange;
+
+    /// Modifyed by S. Turner
   /// Changed to detect RED blobs insted of bright blobs (System uses red LEDs insted of infrared)
   //cv::threshold(image, bwImage, threshold_value, 255, cv::THRESH_BINARY);
   //cv::threshold(image(ROI), bw_image, threshold_value, 255, cv::THRESH_TOZERO);
-
+#ifdef USEGPU
+  cv::cvtColor(Uimage(ROI),image_HSV,cv::COLOR_RGB2HSV);
+#else
   //cv::cvtColor(image(ROI),image_HSV,cv::COLOR_RGB2HSV);
   cv::cvtColor(image(ROI),image_HSV,cv::COLOR_RGB2HSV);
-  cv::inRange(image_HSV,cv::Scalar(105,87,170),cv::Scalar(144,255,255),image_inRange); //indoor dark test
+#endif
+  //cv::inRange(image_HSV,cv::Scalar(107,112,100),cv::Scalar(160,255,255),image_inRange); //indoor test
   //cv::inRange(image_HSV,cv::Scalar(97,55,53),cv::Scalar(140,255,255),image_inRange); //Test 2 thresholds
+    cv::inRange(image_HSV,cv::Scalar(34,40,62),cv::Scalar(78,255,255),image_inRange);
 cv::threshold(image_inRange, bw_image, threshold_value, 255, cv::THRESH_TOZERO); //Remove
   //cv::imshow("bw_image",bw_image); //test
   ///---------------------------
   // Gaussian blur the image
-  cv::Mat gaussian_image;
   cv::Size ksize; // Gaussian kernel size. If equal to zero, then the kerenl size is computed from the sigma
   ksize.width = 0;
   ksize.height = 0;
@@ -128,11 +142,11 @@ cv::threshold(image_inRange, bw_image, threshold_value, 255, cv::THRESH_TOZERO);
   for(cv::Point2f p : distorted_points)
   {
 
-      line(tmp, cv::Point(p.x-4,p.y-4), cv::Point(p.x+4,p.y+4), cv::Scalar(0,200,0),1);
-      line(tmp, cv::Point(p.x-4,p.y+4), cv::Point(p.x+4,p.y-4), cv::Scalar(0,200,0),1);
+      line(tmp, cv::Point(p.x-4,p.y-4), cv::Point(p.x+4,p.y+4), cv::Scalar(0,0,200),1);
+      line(tmp, cv::Point(p.x-4,p.y+4), cv::Point(p.x+4,p.y-4), cv::Scalar(0,0,200),1);
   }
   cv::imshow("Display Keypoint",tmp(ROI));
-  cv::waitKey(1);*/
+  cv::waitKey();*/
 
   // These will be used for the visualization
   distorted_detection_centers = distorted_points;

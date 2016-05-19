@@ -19,11 +19,14 @@
 #include <termios.h>    //termios, TCSANOW, ECHO, ICANON
 #include <unistd.h>     //STDIN_FILENO
 
-#define InitPosHeight 1.5 //Meter
-#define descentSpeed 0.20 // Meter/secunds
+#define InitPosHeight 3.0 //Meter
+#define descentSpeed 0.15 // Meter/secunds
 #define updateRate 20.0 //Hz
+#define MaxDistToCenterXYPlane 0.30
+#define MaxDistToTargetPoint 0.30
+#define DisarmHeigh 0.50
 
-#define SIMULATION
+//#define SIMULATION
 
 ros::ServiceClient set_mode_client;
 ros::Publisher local_pos_pub;
@@ -117,7 +120,7 @@ bool start_setpoint_stream()
     streaming_setpoints = true;
     static int i = 10;
     i--;
-    ROS_INFO("Started streaming setpoints");
+    ROS_INFO("Started to stream setpoints");
     if(ros::ok() && i > 0)
     {
         i = 10;
@@ -154,6 +157,17 @@ void descend()
     TargetPos = Pos;
 }
 
+
+//Get height
+double z_dist()
+{
+#ifdef SIMULATION
+    return estimated_pose.pose.position.z;
+#else
+    return estimated_pose.pose.pose.position.z;
+#endif
+}
+
 //Calculate euclidean distance to center (X-/Y-plane)
 double eu_dist_to_center()
 {
@@ -175,7 +189,7 @@ double eu_dist_to_target_point()
 #endif
 }
 
-//non blocking getch function.. (It blocks!) :/
+//non blocking getch function..
 int getch()
 {
     static struct termios oldt, newt;
@@ -214,7 +228,7 @@ int main(int argc, char **argv)
 
     //Subscribe to UAV state
     ros::Subscriber state_sub = nh.subscribe<mavros_msgs::State>("mavros/state", 10, state_cb);
-    //Subscribe to UAV extended state
+    //Subscribe to UAV extended sshift + 'D'tate
     ros::Subscriber extended_state_sub = nh.subscribe<mavros_msgs::ExtendedState>("mavros/extended_state", 10, extended_state_cb);
 
     //Create published for publiching setpoints
@@ -264,8 +278,8 @@ int main(int argc, char **argv)
         }
     }
     ROS_INFO("UAV is armed");
-    ROS_INFO("Press and hold \"space\" to trigger failsafe");
-    ROS_INFO("Press and hold shift + 'D' to disarm immediately");
+    //ROS_INFO("Press and hold \"space\" to trigger failsafe");
+    ROS_INFO("Press and hold \"space\" to trigger KILLSWITCH! (disarm immediately)");
 
     //----------------------------------------------------------------
     //State machine
@@ -282,12 +296,12 @@ int main(int argc, char **argv)
             statePrinted = false;
         }
         int c = getch();
+        //if(32 == c)
+        //{
+         //   state = FAILSAFE;
+          //  next_state = FAILSAFE;
+        //}
         if(32 == c)
-        {
-            state = FAILSAFE;
-            next_state = FAILSAFE;
-        }
-        if('D' == c)
         {
             state = KILLSWITCH;
             next_state = KILLSWITCH;
@@ -316,6 +330,7 @@ int main(int argc, char **argv)
                 }
                 //WAIT FOR UAV TO BE DETECTED
                 if(uav_detected)
+                    ROS_INFO("UAV detected");
                     next_state = START_SETPOINT_STREAM;
                 break;
 
@@ -323,7 +338,6 @@ int main(int argc, char **argv)
                 if(!statePrinted)
                 {
                     ROS_INFO("STATE: START_SETPOINT_STREAM");
-                    ROS_INFO("Started setpoint stream");
                     statePrinted = true;
                 }
                 if(start_setpoint_stream())
@@ -354,7 +368,7 @@ int main(int argc, char **argv)
                     statePrinted = true;
                 }
                 //Go to descend if within 0.05 meters of setpoint
-                if(eu_dist_to_target_point() < 0.30)
+                if(eu_dist_to_target_point() < MaxDistToTargetPoint)
                 {
                     ROS_INFO("UAV centered over platform");
                     next_state = DESCEND;
@@ -365,16 +379,23 @@ int main(int argc, char **argv)
                 if(!statePrinted)
                 {
                     ROS_INFO("STATE: DESCEND");
-                    ROS_INFO("Staring to descend until landed");
+                    ROS_INFO("Staring to descend");
                     statePrinted = true;
                 }
-                if(extended_current_state.landed_state == mavros_msgs::ExtendedState::LANDED_STATE_ON_GROUND)
+
+                if(z_dist() < DisarmHeigh)
                 {
-                    ROS_INFO("Landing detected");
-                    next_state = LANDED;
+                    ROS_INFO("Disarm height reached");
+                    ROS_INFO("Disarming");
+                    if( arming_client.call(disarm_cmd) &&
+                        disarm_cmd.response.success){
+                        next_state = DISARMED;
+                    }
                 }
-                else if(eu_dist_to_center() < 0.30)
+                else if(eu_dist_to_center() < MaxDistToCenterXYPlane)
+                {
                     descend();
+                }
                 else
                 {
                     ROS_WARN("UAV moved away form center");
@@ -383,28 +404,27 @@ int main(int argc, char **argv)
                 }
                 break;
 
-            case LANDED:
-                if(!statePrinted)
-                {
-                    ROS_INFO("STATE: LANDED");
-                    ROS_INFO("UAV has landed");
-                    ROS_INFO("Disarming");
-                    statePrinted = true;
-                }
-                if( arming_client.call(disarm_cmd) &&
-                    disarm_cmd.response.success){
-                    ROS_INFO_ONCE("Disarmed UAV");
-                    next_state = DISARMED;
-                }
-                break;
-
             case DISARMED:
                 if(!statePrinted)
                 {
                     ROS_INFO("STATE: DISARMED");
-                    ROS_INFO("Landing compleate");
                     statePrinted = true;
-                    ROS_INFO("control_node shutting down");
+                }
+
+                if(extended_current_state.landed_state == mavros_msgs::ExtendedState::LANDED_STATE_ON_GROUND)
+                {
+                    ROS_INFO("Landing detected");
+                    next_state = LANDED;
+                }
+                break;
+
+            case LANDED:
+                if(!statePrinted)
+                {
+                    ROS_INFO("STATE: LANDED");
+                    ROS_INFO("Landing compleate");
+                    ROS_WARN("Control_node shutting down");
+                    statePrinted = true;
                     return 0;
                 }
                 break;

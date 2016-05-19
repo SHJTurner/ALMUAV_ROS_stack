@@ -19,7 +19,7 @@
 #include <termios.h>    //termios, TCSANOW, ECHO, ICANON
 #include <unistd.h>     //STDIN_FILENO
 
-#define InitPosHeight 1.5 //Meter
+#define InitPosHeight 1.7 //Meter
 #define descentSpeed 0.20 // Meter/secunds
 #define updateRate 20.0 //Hz
 
@@ -55,7 +55,7 @@ void state_cb(const mavros_msgs::State::ConstPtr& msg){
     current_state = *msg;
     if(pre_offboard_state != current_state.mode) //Print mode if changed
     {
-        ROS_WARN("Current mode: %s\n",current_state.mode.c_str());
+        ROS_WARN("Current mode: %s",current_state.mode.c_str());
         pre_offboard_state = current_state.mode;
     }
 }

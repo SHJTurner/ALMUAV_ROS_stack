@@ -134,6 +134,8 @@ void MPENode::cameraInfoCallback(const sensor_msgs::CameraInfo::ConstPtr& msg)
  */
 void MPENode::imageCallback(const sensor_msgs::Image::ConstPtr& image_msg)
 {
+  ros::Time fisttimestamp  =  ros::Time::now(); //log time for mesurement (turner)
+
 
   // Check whether already received the camera calibration data
   if (!have_camera_info_)
@@ -159,6 +161,12 @@ void MPENode::imageCallback(const sensor_msgs::Image::ConstPtr& image_msg)
   double time_to_predict = image_msg->header.stamp.toSec();
 
   const bool found_body_pose = trackable_object_.estimateBodyPose(image, time_to_predict);
+
+  ///Mesure time (turner)
+  static unsigned int i = 0;
+  static ros::Time timetotal(0,0);
+  static ros::Duration timediff(0,0);
+
   if (found_body_pose) // Only output the pose, if the pose was updated (i.e. a valid pose was found).
   {
     //Eigen::Matrix4d transform = trackable_object.getPredictedPose();

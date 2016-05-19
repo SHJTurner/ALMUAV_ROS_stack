@@ -6,16 +6,18 @@
 % %connect to roscore or start a new one
  clc; clear; close all;
 
-bag = rosbag('/home/turner/Workspaces/catkin_ALMUAV_workspace/Recordings/Indoor_UAVtest_010416_withEstimatedPose.bag');
-bagselect_Pose = select(bag,'Topic','/monocular_pose_estimator/estimated_pose');
+bag = rosbag('/home/turner/Workspaces/catkin_ALMUAV_workspace/_2016-05-17-12-41-55.bag');
+bagselect_Pose = select(bag,'Topic','/mavros/vision_pose/pose_cov');
 bagselect_Video = select(bag,'Topic','/monocular_pose_estimator/image_with_detections');
 poseData = readMessages(bagselect_Pose);
 videoData = readMessages(bagselect_Video);
 
 %Load Video
 for n = 1:length(videoData)
-    frameTime(n) = videoData{n}.Header.Stamp.Sec;
-    frameData{n} = readImage(videoData{n});
+    if 2 < (videoData{n}.Header.Stamp.Sec - videoData{1}.Header.Stamp.Sec)
+        frameTime(n) = videoData{n}.Header.Stamp.Sec;
+        frameData{n} = readImage(videoData{n});
+    end
 end
 
 %Load PosData
@@ -48,55 +50,55 @@ EuOriData = quat2eul(QOriData);
 % hold off
 
 %% Plot X,Y,Z,Pitch,Roll,Yaw
-figure
-ax = subplot(3,2,1);
-plot(PosData(:,1),'r')
-grid(ax,'on')
-xlabel('Sample nr.');
-ylabel('Meter');
-%mu = mean(PosData(:,1));
-%ylim([mu-0.05,mu+0.05]);
-title('X')
-
-ax = subplot(3,2,3);
-plot(PosData(:,2),'g')
-grid(ax,'on')
-xlabel('Sample nr.')
-ylabel('Meter')
-%mu = mean(PosData(:,2));
-%ylim([mu-0.05,mu+0.05]);
-title('Y')
-
-ax = subplot(3,2,5);
-plot(PosData(:,3),'b')
-grid(ax,'on')
-xlabel('Sample nr.')
-ylabel('Meter')
-%mu = mean(PosData(:,3));
-%ylim([mu-0.05,mu+0.05]);
-title('Z')
-
-ax = subplot(3,2,2);
-plot(EuOriData(:,1),'r')
-grid(ax,'on')
-xlabel('Sample nr.')
-ylabel('Radian')
-title('Pitch')
-
-ax = subplot(3,2,4);
-plot(EuOriData(:,2),'g')
-grid(ax,'on')
-xlabel('Sample nr.')
-ylabel('Radian')
-title('Roll')
-
-ax = subplot(3,2,6);
-plot(EuOriData(:,3),'b')
-grid(ax,'on')
-xlabel('Sample nr.')
-ylabel('Radian')
-title('Yaw')
-
+% figure
+% ax = subplot(3,2,1);
+% plot(PosData(:,1),'r')
+% grid(ax,'on')
+% xlabel('Sample nr.');
+% ylabel('Meter');
+% %mu = mean(PosData(:,1));
+% %ylim([mu-0.05,mu+0.05]);
+% title('X')
+% 
+% ax = subplot(3,2,3);
+% plot(PosData(:,2),'g')
+% grid(ax,'on')
+% xlabel('Sample nr.')
+% ylabel('Meter')
+% %mu = mean(PosData(:,2));
+% %ylim([mu-0.05,mu+0.05]);
+% title('Y')
+% 
+% ax = subplot(3,2,5);
+% plot(PosData(:,3),'b')
+% grid(ax,'on')
+% xlabel('Sample nr.')
+% ylabel('Meter')
+% %mu = mean(PosData(:,3));
+% %ylim([mu-0.05,mu+0.05]);
+% title('Z')
+% 
+% ax = subplot(3,2,2);
+% plot(EuOriData(:,1),'r')
+% grid(ax,'on')
+% xlabel('Sample nr.')
+% ylabel('Radian')
+% title('Pitch')
+% 
+% ax = subplot(3,2,4);
+% plot(EuOriData(:,2),'g')
+% grid(ax,'on')
+% xlabel('Sample nr.')
+% ylabel('Radian')
+% title('Roll')
+% 
+% ax = subplot(3,2,6);
+% plot(EuOriData(:,3),'b')
+% grid(ax,'on')
+% xlabel('Sample nr.')
+% ylabel('Radian')
+% title('Yaw')
+% 
 
 
 %% Plot 3D of path
@@ -106,9 +108,10 @@ fig = figure('Position', [0, 0, 1280,720]);
 PoseTimeIndex = 1;
 for n=1:length(frameData)
     
-    if PoseTime(PoseTimeIndex) <= frameTime(n) && PoseTimeIndex < length(PoseTime)
-        PoseTimeIndex = PoseTimeIndex + 1;        
-    end
+        if PoseTime(PoseTimeIndex) <= frameTime(n) && PoseTimeIndex < length(PoseTime)
+            PoseTimeIndex = PoseTimeIndex + 1;        
+        end
+    
     
     subplot(1,2,1)
     plot3(PosData(1:PoseTimeIndex,1),PosData(1:PoseTimeIndex,2),PosData(1:PoseTimeIndex,3),'b','LineWidth',2,'Marker','x','MarkerEdgeColor','r','MarkerSize',2);
@@ -116,12 +119,13 @@ for n=1:length(frameData)
     hold on
     %R = [1 0 0; 0 1 0; 0 0 1];
     %plotCamera('Location',[0 0 -0.10],'Orientation',R,'Size',0.05,'Color',[0,0,0]);
-    xlabel('Meter');
-    ylabel('Meter');
-    zlabel('Meter');
-    xlim([-1.00,1.00]);
-    ylim([-1.00,1.00]);
-    zlim([-0.15,2.0]);
+    %hold on
+    xlabel('X [meter]');
+    ylabel('Y [meter]');
+    zlabel('Z [meter]');
+    xlim([-1.25,1.25]);
+    ylim([-1.25,1.25]);
+    zlim([-0.15,2]);
     title('Position');
     
     subplot(1,2,2), subimage(frameData{n});

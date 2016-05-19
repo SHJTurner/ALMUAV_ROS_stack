@@ -88,7 +88,7 @@ public:
                        const cv::Mat &camera_matrix_K, const std::vector<double> &camera_distortion_coeffs);
 
 
-//  static void dilateErodeMat(UMat &_src);
+  static void dilateErodeMat(cv::UMat &_src);
 
   static void dilateErodeMat(cv::Mat &_src);
 
