@@ -10,25 +10,39 @@
 % %create subscriber for the estimated pose
 % estimatedPose = rossubscriber('/monocular_pose_estimator/estimated_pose'); 
 % number_of_samples = 100;
-path = '/home/turner/Workspaces/catkin_ALMUAV_workspace/_2016-05-17-11-58-33';
+path = '/home/turner/Workspaces/catkin_ALMUAV_workspace/Test2/Try5/Test2_try5';
 bag = rosbag(strcat(path,'.bag'));%'/home/turner/Workspaces/catkin_ws_ALMUAV/Recordings/120cm_breadboard.bag');
 bagselect_Pose = select(bag,'Topic','/mavros/vision_pose/pose_cov');%'/monocular_pose_estimator/estimated_pose');
+bagselect_LocalPosestimator = select(bag,'Topic','/mavros/local_position/pose');
 poseData = readMessages(bagselect_Pose);
+localestimatedposData = readMessages(bagselect_LocalPosestimator);
 %Recive data
 
 %poseData{2}
 %for n = 1:number_of_samples
 %poseData = receive(estimatedPose,5);
-TimeStart = 0.0;
-TimeEnd = 5.0;
+TimeStart = 30.0;
+TimeEnd = 36.0;
 DeltaTime = TimeEnd -TimeStart;
 TimeOffsetSec = double(poseData{1}.Header.Stamp.Sec) + (double(poseData{1}.Header.Stamp.Nsec) * 0.000000001);
+offboardtimesaved = 0;
+lostsec = 1464268197;
+lostnanosec = 710278;
+UAVlosttime = 4.502;%double(lostsec) + double(lostnanosec) * 0.000000001 - TimeOffsetSec
 for n = 1:length(poseData)
-
+        
+    if(poseData{n}.Header.Stamp.Sec == 1464268194 && poseData{n}.Header.Stamp.Nsec > 788610000)
+            if(offboardtimesaved == 0)
+                offboardtimesaved = 1;
+                        offboardsec = poseData{n}.Header.Stamp.Sec;
+                        offboardnano = double(poseData{n}.Header.Stamp.Nsec) * 0.000000001;
+                        offboardtime = double(offboardsec) + offboardnano - TimeOffsetSec
+            end
+        end
         PoseTimeSec(n) = poseData{n}.Header.Stamp.Sec;
         PoseTimeNsec(n) = poseData{n}.Header.Stamp.Nsec;
         NanoSec = double(poseData{n}.Header.Stamp.Nsec) * 0.000000001;
-        PoseTime(n) = double(poseData{n}.Header.Stamp.Sec) + NanoSec - TimeOffsetSec - double(TimeStart);
+        PoseTime(n) = double(poseData{n}.Header.Stamp.Sec) + NanoSec - TimeOffsetSec; %- double(TimeStart);
         PosData(n,1) = poseData{n}.Pose.Pose.Position.X;
         PosData(n,2) = poseData{n}.Pose.Pose.Position.Y;
         PosData(n,3) = poseData{n}.Pose.Pose.Position.Z;
@@ -36,6 +50,23 @@ for n = 1:length(poseData)
         QOriData(n,2) = poseData{n}.Pose.Pose.Orientation.Y;
         QOriData(n,3) = poseData{n}.Pose.Pose.Orientation.Z;
         QOriData(n,4) = poseData{n}.Pose.Pose.Orientation.W;
+                
+end
+
+for n = 1:length(localestimatedposData)
+        
+        localPoseTimeSec(n) = localestimatedposData{n}.Header.Stamp.Sec;
+        localPoseTimeNsec(n) = localestimatedposData{n}.Header.Stamp.Nsec;
+        localNanoSec = double(localestimatedposData{n}.Header.Stamp.Nsec) * 0.000000001;
+        localPoseTime(n) = double(localestimatedposData{n}.Header.Stamp.Sec) + NanoSec - TimeOffsetSec; %- double(TimeStart);
+        localPosData(n,1) = localestimatedposData{n}.Pose.Position.X;
+        localPosData(n,2) = localestimatedposData{n}.Pose.Position.Y;
+        localPosData(n,3) = localestimatedposData{n}.Pose.Position.Z;
+        %QOriData(n,1) = poseData{n}.Pose.Pose.Orientation.X;
+        %QOriData(n,2) = poseData{n}.Pose.Pose.Orientation.Y;
+        %QOriData(n,3) = poseData{n}.Pose.Pose.Orientation.Z;
+        %QOriData(n,4) = poseData{n}.Pose.Pose.Orientation.W;
+                
 end
 %Shutdown or disconnect from roscore
 %rosshutdown;
@@ -78,13 +109,18 @@ xlabel(TimeLabel);
 ylabel(DistanceLabel);
 xlim([0,DeltaTime]);
 mu = mean(PosData(:,1));
-ylim([mu-limitYmeter,mu+limitYmeter]);
+ylim([-1.5,1.5]);%[0,mu+limitYmeter]);
 title('X')
-hline = refline([0 mu]);
+hline = refline([0 0]);%mu]);
 hline.Color = [0.5 0.5 0.5];
 set(hline,'LineStyle','--');
 hline.LineWidth = 1.5;
 uistack(hline,'bottom')
+line([offboardtime-0.2 offboardtime-0.2],get(ax,'YLim'),'Color',[0 1 0])
+line([UAVlosttime UAVlosttime ],get(ax,'YLim'),'Color',[1 0 0])
+hold on
+plot(localPoseTime,localPosData(:,1),'m--o');
+
 STDx = std(PosData(:,1))
 MEANx = mean(PosData(:,1))
 
@@ -95,15 +131,21 @@ xlabel(TimeLabel)
 ylabel(DistanceLabel)
 xlim([0,DeltaTime]);
 mu = mean(PosData(:,2));
-ylim([mu-limitYmeter,mu+limitYmeter]);
+ylim([-1.5,1.5]);%[mu-limitYmeter,mu+limitYmeter]);
 title('Y')
-hline = refline([0 mu]);
+hline = refline([0 0]);%mu]);
 hline.Color = [0.5 0.5 0.5];
 set(hline,'LineStyle','--');
 hline.LineWidth = 1.5;
 uistack(hline,'bottom')
+line([offboardtime-0.2 offboardtime-0.2],get(ax,'YLim'),'Color',[0 1 0])
+line([UAVlosttime UAVlosttime ],get(ax,'YLim'),'Color',[1 0 0])
+hold on;
+plot(localPoseTime,localPosData(:,2),'m--o');
+
 STDy = std(PosData(:,2))
 MEANy = mean(PosData(:,2))
+
 
 ax = subplot(3,2,5);
 plot(PoseTime,PosData(:,3),'b')
@@ -112,13 +154,18 @@ xlabel(TimeLabel)
 ylabel(DistanceLabel)
 xlim([0,DeltaTime]);
 mu = mean(PosData(:,3));
-ylim([mu-limitYmeterZ,mu+limitYmeterZ]);
+ylim([0,3.5]);%[mu-limitYmeterZ,mu+limitYmeterZ]);
 title('Z')
-hline = refline([0 mu]);
+hline = refline([0 1.7]);%mu]);
 hline.Color = [0.5 0.5 0.5];
 set(hline,'LineStyle','--');
 hline.LineWidth = 1.5;
 uistack(hline,'bottom')
+line([offboardtime-0.2 offboardtime-0.2],get(ax,'YLim'),'Color',[0 1 0])
+line([UAVlosttime UAVlosttime ],get(ax,'YLim'),'Color',[1 0 0])
+hold on;
+plot(localPoseTime,localPosData(:,3),'m--o');
+
 STDz = std(PosData(:,3))
 MEANz = mean(PosData(:,3))
 
@@ -132,11 +179,13 @@ xlim([0,DeltaTime]);
 ylim(limitY);
 title('Roll')
 mu = mean(EuOriData(:,1));
-hline = refline([0 mu]);
-hline.Color = [0.5 0.5 0.5];
-set(hline,'LineStyle','--');
-hline.LineWidth = 1.5;
-uistack(hline,'bottom')
+%hline = refline([0 mu]);
+%hline.Color = [0.5 0.5 0.5];
+%set(hline,'LineStyle','--');
+%hline.LineWidth = 1.5;
+%uistack(hline,'bottom')
+line([offboardtime-0.2 offboardtime-0.2],get(ax,'YLim'),'Color',[0 1 0])
+line([UAVlosttime UAVlosttime ],get(ax,'YLim'),'Color',[1 0 0])
 STDr = std(EuOriData(:,1))
 MEANr = mean(EuOriData(:,1))
 
@@ -149,11 +198,13 @@ xlim([0,DeltaTime]);
 ylim(limitY);
 title('Pitch')
 mu = mean(EuOriData(:,2));
-hline = refline([0 mu]);
-hline.Color = [0.5 0.5 0.5];
-set(hline,'LineStyle','--');
-hline.LineWidth = 1.5;
-uistack(hline,'bottom')
+%hline = refline([0 mu]);
+%hline.Color = [0.5 0.5 0.5];
+%set(hline,'LineStyle','--');
+%hline.LineWidth = 1.5;
+%uistack(hline,'bottom')
+line([offboardtime-0.2 offboardtime-0.2],get(ax,'YLim'),'Color',[0 1 0])
+line([UAVlosttime UAVlosttime ],get(ax,'YLim'),'Color',[1 0 0])
 STDp = std(EuOriData(:,2))
 MEANp = mean(EuOriData(:,2))
 
@@ -162,15 +213,17 @@ plot(PoseTime,EuOriData(:,3),'b')
 grid(ax,'on')
 xlabel(TimeLabel)
 ylabel(AngleLabel)
-xlim([0,DeltaTime]);0
+xlim([0,DeltaTime]);
 ylim([-180,180]);
 title('Yaw')
 mu = mean(EuOriData(:,3));
-hline = refline([0 mu]);
+hline = refline([0 0]);%mu]);
 hline.Color = [0.5 0.5 0.5];
 set(hline,'LineStyle','--');
 hline.LineWidth = 1.5;
 uistack(hline,'bottom')
+line([offboardtime-0.2 offboardtime-0.2],get(ax,'YLim'),'Color',[0 1 0])
+line([UAVlosttime UAVlosttime ],get(ax,'YLim'),'Color',[1 0 0])
 STDyaw = std(EuOriData(:,3))
 MEANyaw = mean(EuOriData(:,3))
 
@@ -184,7 +237,7 @@ data = [STDx, MEANx, STDy, MEANy, STDz, MEANz, STDr, MEANr, STDp, MEANp, STDyaw,
 formatSpec = 'X: standard deviation: %2.4f, Mean:  %2.4f\nY: standard deviation: %2.4f, Mean:  %2.4f\nZ: standard deviation: %2.4f, Mean:  %2.4f\nRoll: standard deviation: %2.4f, Mean:  %2.4f\nPitch: standard deviation: %2.4f, Mean:  %2.4f\nYaw: standard deviation: %2.4f, Mean:  %2.4f\n';
 fprintf( fid,formatSpec,data);
 fclose(fid);
- close all;
+ %close all;
 % %% Plot 3D of path
 % figure;
 % scatter3(PosData(:,1),PosData(:,2),PosData(:,3),'x','r');

@@ -6,7 +6,7 @@
 % %connect to roscore or start a new one
  clc; clear; close all;
 
-bag = rosbag('/home/turner/Workspaces/catkin_ALMUAV_workspace/_2016-05-17-12-41-55.bag');
+bag = rosbag('/home/turner/Workspaces/catkin_ALMUAV_workspace/Test2/Try5/Test2_try5_short.bag');
 bagselect_Pose = select(bag,'Topic','/mavros/vision_pose/pose_cov');
 bagselect_Video = select(bag,'Topic','/monocular_pose_estimator/image_with_detections');
 poseData = readMessages(bagselect_Pose);
@@ -14,7 +14,7 @@ videoData = readMessages(bagselect_Video);
 
 %Load Video
 for n = 1:length(videoData)
-    if 2 < (videoData{n}.Header.Stamp.Sec - videoData{1}.Header.Stamp.Sec)
+    if 0.5 < (videoData{n}.Header.Stamp.Sec - videoData{1}.Header.Stamp.Sec)
         frameTime(n) = videoData{n}.Header.Stamp.Sec;
         frameData{n} = readImage(videoData{n});
     end
@@ -102,7 +102,7 @@ EuOriData = quat2eul(QOriData);
 
 
 %% Plot 3D of path
-v = VideoWriter('/home/turner/Workspaces/catkin_ALMUAV_workspace/Recordings/out1.avi');
+v = VideoWriter('/home/turner/Workspaces/catkin_ALMUAV_workspace/out1.avi');
 open(v);
 fig = figure('Position', [0, 0, 1280,720]);
 PoseTimeIndex = 1;
@@ -123,9 +123,9 @@ for n=1:length(frameData)
     xlabel('X [meter]');
     ylabel('Y [meter]');
     zlabel('Z [meter]');
-    xlim([-1.25,1.25]);
-    ylim([-1.25,1.25]);
-    zlim([-0.15,2]);
+    xlim([-1.75,1.75]);
+    ylim([-1.75,1.75]);
+    zlim([-0.15,3.5]);
     title('Position');
     
     subplot(1,2,2), subimage(frameData{n});
